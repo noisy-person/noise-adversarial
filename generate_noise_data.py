@@ -62,6 +62,15 @@ parser.add_argument('-test', action='store_true', default=False, help='train or 
 args = parser.parse_args()
 PAD_IDX = 1
 np.random.seed()
+def get_length(feature):
+    seq_length = feature.size()[1]
+    one_sum = torch.sum( \
+        torch.eq( \
+            feature,torch.ones(feature.size(),dtype=torch.long)).long() \
+                ,-1)
+
+    return seq_length-one_sum
+
 class Subset(Dataset):
     r"""
     Subset of a dataset at specified indices.
@@ -154,8 +163,20 @@ def generate_batch(data):
 
     return fields(text=padded_texts, label=torch.LongTensor(labels))
 
+def generate_batch_adv(data):
+    fields=collections.namedtuple(  # pylint: disable=invalid-name
+            "fields", ["text", "label","input_length"])
+    labels,texts = list(zip(*data))
+ 
+    
+    padded_texts= pad_sequence(list(texts),batch_first=True,padding_value=PAD_IDX)
+
+    input_length = get_length(padded_texts)
+
+    return fields(text=padded_texts, label=torch.LongTensor(labels),input_length = input_length)
+
 #load AG_NEWS  training samples is 108000/12000 and testing 7,600.
-def AG_NEWS_noisedata(text_field, label_field,  **kargs):
+def AG_NEWS_noisedata( **kargs):
 
     
     train_dataset, test_dataset = text_classification.DATASETS['AG_NEWS'](
@@ -206,18 +227,18 @@ def AG_NEWS_noisedata(text_field, label_field,  **kargs):
         data_split(train_dataset, [train_len, len(train_dataset) - train_len],shuffeled_idx)
 
     train_iter = DataLoader(sub_train_, batch_size=args.batch_size, shuffle=True,
-                        collate_fn=generate_batch)
+                        collate_fn=generate_batch_adv)
     valid_iter = DataLoader(sub_valid_, batch_size=args.batch_size, shuffle=True,
-                    collate_fn=generate_batch)
+                    collate_fn=generate_batch_adv)
     test_iter = DataLoader(test_dataset, batch_size=len(test_dataset), 
-                    collate_fn=generate_batch)
+                    collate_fn=generate_batch_adv)
     return train_iter, valid_iter,test_iter , len(train_dataset.get_vocab()), len(test_dataset.get_labels())
 
 # load data
 print("\nLoading data...")
-text_field = data.Field(lower=True)
-label_field = data.Field(sequential=False)
-train_iter,dev_iter, test_iter,vocab_size,class_size = AG_NEWS_noisedata(text_field, label_field, device=-1, repeat=False)
+#text_field = data.Field(lower=True)
+#label_field = data.Field(sequential=False)
+train_iter,dev_iter, test_iter,vocab_size,class_size = AG_NEWS_noisedata(device=-1, repeat=False)
 
 train_text=[]
 train_label=[]

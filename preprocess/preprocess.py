@@ -36,7 +36,7 @@ flags.DEFINE_bool('generate_noise_dataset', True, '')
 flags.DEFINE_bool('generate_pretrained', False, '')
 
 #noise 
-flags.DEFINE_float('noise_rate', 0.3, '')
+flags.DEFINE_float('noise_rate', 0.7, '')
 flags.DEFINE_string('noise_mode', 'sym', '')
 flags.DEFINE_float('train_rate', 0.9, '')
 flags.DEFINE_integer('train_size', 108000, '')
@@ -67,6 +67,15 @@ class Subset(Dataset):
 
     def __len__(self):
         return len(self.indices)
+
+def get_length(feature):
+    seq_length = feature.size()[1]
+    one_sum = torch.sum( \
+        torch.eq( \
+            feature,torch.ones(feature.size(),dtype=torch.long)).long() \
+                ,-1)
+
+    return seq_length-one_sum
 
 def data_split(dataset, lengths,shuffeled_idx):
     r"""
@@ -108,7 +117,7 @@ def generate_noiselabels(label):
             if FLAGS.noise_mode=='sym':
                 if FLAGS.dataset=='ag_news': 
                     numbers = list(range(0,4))
-
+                    numbers.remove(label[i])
                     noiselabel=random.choice(numbers)
 
                     #print(noiselabel)
@@ -122,19 +131,16 @@ def generate_noiselabels(label):
 
 def generate_batch(data):
     fields=collections.namedtuple(  # pylint: disable=invalid-name
-            "fields", ["text", "label"])
+            "fields", ["text", "label","input_length"])
     labels,texts = list(zip(*data))
-    #print(data)
+ 
     
     padded_texts= pad_sequence(list(texts),batch_first=True,padding_value=PAD_IDX)
 
-    texts = torch.cat(texts,dim=-1)
+    input_length = get_length(padded_texts)
 
-    # torch.Tensor.cumsum returns the cumulative sum
-    # of elements in the dimension dim.
-    # torch.Tensor([1.0, 2.0, 3.0]).cumsum(dim=0)
+    return fields(text=padded_texts, label=torch.LongTensor(labels),input_length = input_length)
 
-    return fields(text=padded_texts, label=torch.LongTensor(labels))
 
 #load AG_NEWS  training samples is 108000/12000 and testing 7,600.
 def AG_NEWS_noisedata(train_dataset, test_dataset, check_noise_data, **kwargs):
@@ -252,9 +258,9 @@ def main(argv):
             AG_NEWS_noisedata(train_dataset, test_dataset, False)
 
         logging.info("save noisy labels to %s ..."%os.path.join(FLAGS.data_path, FLAGS.dataset))        
-        pickle.dump(train_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_train_iter_'+str(FLAGS.noise_rate)+'.pkl'), mode='wb'))  
-        pickle.dump(dev_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_dev_iter_'+str(FLAGS.noise_rate)+'.pkl'), mode='wb'))   
-        pickle.dump(test_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_test_iter_'+str(FLAGS.noise_rate)+'.pkl'), mode='wb'))   
+        pickle.dump(train_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_train_iter_{FLAGS.noise_rate}.pkl'), mode='wb'))  
+        pickle.dump(dev_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_dev_iter_{FLAGS.noise_rate}.pkl'), mode='wb'))   
+        pickle.dump(test_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_test_iter_{FLAGS.noise_rate}.pkl'), mode='wb'))   
 
 if __name__ == '__main__':
     app.run(main)

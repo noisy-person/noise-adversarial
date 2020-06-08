@@ -165,7 +165,7 @@ for attr, value in sorted(args.__dict__.items()):
 
 
 # model
-cnn = model.CNN_Text(args)
+cnn = model.CNN_Text_Noise(args)
 if args.snapshot is not None:
     print('\nLoading model from {}...'.format(args.snapshot))
     cnn.load_state_dict(torch.load(args.snapshot))
@@ -185,7 +185,7 @@ elif args.test:
 else:
     print()
     try:
-        train.train(train_iter, dev_iter, cnn, args)
+        train.train(train_iter, test_iter, cnn, args)
         print("test")
         train.test(test_iter, cnn, args)
     except KeyboardInterrupt:
