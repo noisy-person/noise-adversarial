@@ -1,7 +1,7 @@
 # noise-trainsition-cnn
-get noised dataset 
-  python preprocess.py
+## get noised dataset 
+    python preprocess.py
 
-train
-  python main.py
+##train
+    python main.py
 
