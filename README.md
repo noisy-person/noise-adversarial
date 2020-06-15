@@ -2,6 +2,6 @@
 ## get noised dataset 
     python preprocess.py
 
-##train
+## train
     python main.py
 
