@@ -1,4 +1,4 @@
-# noise-trainsition-cnn
+# noise-adversarial
 ## get noised dataset 
     python preprocess.py
 
