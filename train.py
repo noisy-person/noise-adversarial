@@ -28,7 +28,7 @@ def train(train_iter, dev_iter, model, FLAGS):
             #print('logit vector', logit.size())
             #print('target vector', target.size())
             
-            loss = criterion(noise_logit, target)#+0.5*lambda_*l2_norm #fix with one l2_norm
+            loss = criterion(noise_logit, target)+0.5*lambda_*l2_norm #fix with one l2_norm
 
 
             #print(loss)
@@ -47,7 +47,7 @@ def train(train_iter, dev_iter, model, FLAGS):
                                                                              corrects,
                                                                              feature.shape[0]))
             if steps % FLAGS.test_interval == 0:
-                dev_acc = test(dev_iter, model, FLAGS)
+                dev_acc = eval(dev_iter, model, FLAGS)
                 if dev_acc > best_acc:
                     best_acc = dev_acc
                     last_step = steps

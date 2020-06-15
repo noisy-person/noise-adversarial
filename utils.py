@@ -16,7 +16,7 @@ class idx2emb(nn.Module):
         V = FLAGS.embed_num
         D = FLAGS.embed_dim
 
-        with open("./data/ag_news_emb.pkl",'rb') as f:
+        with open("./data/ag_news/ag_news_emb.pkl",'rb') as f:
             pretrained=pickle.load(f)
         self.embed = nn.Embedding(V, D,padding_idx=PAD_IDX)
         self.embed.weight.data.copy_(torch.FloatTensor(pretrained))
@@ -52,30 +52,31 @@ def get_length(feature):
 
 
 
-def kl_div_with_logit(q_logit, p_logit):
 
-    q = F.softmax(q_logit, dim=1)
-    logq = F.log_softmax(q_logit, dim=1)
+
+def kl_div_with_logit(p_logit, q_logit):
+
+    p = F.softmax(p_logit, dim=1)
     logp = F.log_softmax(p_logit, dim=1)
+    logq = F.log_softmax(q_logit, dim=1)
 
-    qlogq = ( q *logq).sum(dim=1).mean(dim=0)
-    qlogp = ( q *logp).sum(dim=1).mean(dim=0)
+    plogp = ( p *logp).sum(dim=1).mean(dim=0)
+    plogq = ( p *logq).sum(dim=1).mean(dim=0)
 
-    return qlogq - qlogp
-
-
-def _l2_normalize(d):
+    return plogp - plogq
+"""
+def _l2_normalize(d,norm_length):
 
     d = d.numpy()
     d /= (np.sqrt(np.sum(d ** 2, axis=(1, 2))).reshape((-1, 1, 1)) + 1e-16)
     return torch.from_numpy(d)
-
-def _l2_normalize_vat(d,norm_length):
+"""
+def _l2_normalize(d,norm_length):
     # shape(x) = (batch, num_timesteps, d)
     # Divide x by max(abs(x)) for a numerically stable L2 norm.
     # 2norm(x) = a * 2norm(x/a)
     # Scale over the full sequence, dims (1, 2)  
-    alpha = torch.max(torch.abs(d),-1,keepdim=True).values + 1e-12
+    alpha = torch.max(torch.abs(d),-1,keepdim=True).values + 1e-24
     #  l2_norm = alpha * tf.sqrt(
     #  tf.reduce_sum(tf.pow(x / alpha, 2), (1, 2), keep_dims=True) + 1e-6)
     l2_norm = alpha * torch.sqrt(
@@ -85,29 +86,30 @@ def _l2_normalize_vat(d,norm_length):
     return norm_length * d_unit
 
 
-def vat_loss(model, feature, logit, input_length, xi=1e-6, eps=2.5, num_iters=1):
+def vat_loss(model, feature, logit, input_length, xi=1e-6, eps=7.5, num_iters=1):
 
-    # find r_adv
+    # find r 
 
     d = torch.Tensor(feature.size()).normal_()
     for i in range(num_iters):
         #d = 1e-3 *_l2_normalize(mask_by_length(d,input_length))
-        d = _l2_normalize_vat(
-            mask_by_length(d,input_length) , 1e-3)
+        d = _l2_normalize(
+            mask_by_length(d,input_length) , xi)
         d = Variable(d.cuda(), requires_grad=True)
-        y_hat = model(feature + d)
+        y_hat = model(feature.detach() + d)
         delta_kl = kl_div_with_logit(logit.detach(), y_hat)
-        delta_kl.backward(retain_graph=True)
+        delta_kl.backward()
 
         d = d.grad.data.clone().cpu()
         model.zero_grad()
 
     #d = _l2_normalize(d)
-    d=_l2_normalize_vat(d,2.5)
+    d=_l2_normalize(d,eps)
     d = Variable(d.cuda())
     #r_adv = eps *d
     # compute lds
     y_hat = model(feature + d.detach())
+    #y_hat = model(feature + r_adv.detach())
     delta_kl = kl_div_with_logit(logit.detach(), y_hat)
     return delta_kl
 

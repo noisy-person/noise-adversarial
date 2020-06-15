@@ -22,9 +22,9 @@ FLAGS = flags.FLAGS
 
 # dataset
 flags.DEFINE_string('dataset', 'ag_news', '')
-flags.DEFINE_string('data_path', '../data', '')
-flags.DEFINE_string('emb_path', '../../noisy-sequence/glove/glove.840B.300d.txt', '')
-flags.DEFINE_string('voc_path', '../../noisy-sequence/data/ag_news/vocab.txt', '')
+flags.DEFINE_string('data_path', './data/ag_news', '')
+flags.DEFINE_string('emb_path', './data/glove.840B.300d.txt', '')
+flags.DEFINE_string('voc_path', './data/ag_news/vocab.txt', '')
 
 flags.DEFINE_integer('ngram', 2, '')
 # model parameters
@@ -96,7 +96,6 @@ def data_split(dataset, lengths,shuffeled_idx):
     
     return splited_dataset
 
-
 def generate_noiselabels(label):
     #shuffle the index and split train/dev first and split noise /not noise after 
 
@@ -111,6 +110,44 @@ def generate_noiselabels(label):
     noise_size = int(FLAGS.noise_rate*train_size)   
     noise_idx = train_idx[:noise_size]
     noised_labels = []
+ 
+    for i in range(label_size):
+        if i in noise_idx:
+            
+            if FLAGS.noise_mode=='sym':
+                if FLAGS.dataset=='ag_news': 
+                    numbers = list(range(0,4))
+                    numbers.remove(label[i])
+                    noiselabel=random.choice(numbers)
+
+                    #print(noiselabel)
+
+                noised_labels.append(noiselabel)
+
+        else:    
+            noised_labels.append(label[i]) 
+    return noised_labels,shuffeled_idx
+
+def generate_noiselabels_withdevnoise(label):
+    #shuffle the index and split train/dev first and split noise /not noise after 
+
+    label_size=len(label)
+    shuffeled_idx = randperm(label_size).tolist()
+    
+    
+    train_size=int(label_size*FLAGS.train_rate)
+    train_idx=shuffeled_idx[:train_size]
+
+    dev_size = label_size-train_size 
+    dev_idx=shuffeled_idx[train_size:]
+
+    train_noise_size = int(FLAGS.noise_rate*train_size)  
+    dev_noise_size = int(FLAGS.noise_rate*dev_size)
+
+
+    noise_idx = train_idx[:train_noise_size] + dev_idx[:dev_noise_size]
+    noised_labels = []
+
     for i in range(label_size):
         if i in noise_idx:
             
@@ -153,7 +190,7 @@ def AG_NEWS_noisedata(train_dataset, test_dataset, check_noise_data, **kwargs):
     unzip_data=list(zip(*train_dataset._data)) #분리
     
     logging.info("generate noise")
-    noised_labels, shuffeled_idx=generate_noiselabels(list(unzip_data[0]))
+    noised_labels, shuffeled_idx=generate_noiselabels_withdevnoise(list(unzip_data[0]))
 
     logging.info("update dataset")
     noise_updated_data = list(zip(*[tuple(noised_labels),unzip_data[1]]))
@@ -161,11 +198,7 @@ def AG_NEWS_noisedata(train_dataset, test_dataset, check_noise_data, **kwargs):
 
     logging.info("after")
     logging.info(list(zip(*train_dataset._data))[0][:100])
-    #print(noise_labels[:1200])
-    #print(unzip_data[0][:1200])
-    ##print("+++"*100)
-    #print(noise_labels[-1200:])
-    #print(unzip_data[0][-1200:])
+
     if check_noise_data:
         #check if it is true
         count=0

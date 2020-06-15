@@ -81,7 +81,7 @@ class CNN_Text(nn.Module):
     
     def __init__(self, FLAGS):
         super(CNN_Text, self).__init__()
-        with open("./data/ag_news_emb.pkl",'rb') as f:
+        with open("./data/ag_news/ag_news_emb.pkl",'rb') as f:
             pretrained=pickle.load(f)
 
         self.FLAGS = FLAGS
@@ -153,7 +153,7 @@ class CNN_Text_Noise(nn.Module):
     
     def __init__(self, FLAGS):
         super(CNN_Text_Noise, self).__init__()
-        with open("./data/ag_news_emb.pkl",'rb') as f:
+        with open("./data/ag_news/ag_news_emb.pkl",'rb') as f:
             pretrained=pickle.load(f)
 
         self.FLAGS = FLAGS

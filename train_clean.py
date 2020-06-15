@@ -33,13 +33,10 @@ def train(train_iter, dev_iter, model, FLAGS):
             feature, target = batch.text.to(device), batch.label.to(device)
             #feature.t_(), target.sub_(1)
 
-            #l2_norm=model.nm.transition_mat.norm(2)
             
             optimizer.zero_grad()
             logit = model(feature)
-            #print('logit vector', logit.size())
-            #print('target vector', target.size())
-            
+
             loss = criterion(logit, target)
 
 

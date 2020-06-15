@@ -14,15 +14,18 @@ def train(train_iter, dev_iter, model, FLAGS):
     steps = 0
     best_acc = 0
     last_step = 0
-    model.train()
+    
     _idx2emb = idx2emb(FLAGS).to(device)
     for epoch in range(1, FLAGS.epochs+1):
+
         for batch in train_iter:
+            model.train()
+            
             feature, target, input_length = batch.text.to(device), batch.label.to(device)  , batch.input_length.to('cpu') 
             #feature.t_(), target.sub_(1)
 
             
-
+            
             embedd_matrix = _idx2emb(feature)
             logit = model(embedd_matrix)
             #print('logit vector', logit.size())
@@ -47,7 +50,7 @@ def train(train_iter, dev_iter, model, FLAGS):
                                                                              corrects,
                                                                              feature.shape[0]))
             if steps % FLAGS.test_interval == 0:
-                dev_acc = test(dev_iter, model, FLAGS)
+                dev_acc = eval(dev_iter, model, FLAGS)
                 if dev_acc > best_acc:
                     best_acc = dev_acc
                     last_step = steps
@@ -58,8 +61,9 @@ def train(train_iter, dev_iter, model, FLAGS):
                     if steps - last_step >= FLAGS.early_stop:
                         
                         print('early stop by {} steps.'.format(FLAGS.early_stop))
-                        break
-            elif steps % FLAGS.save_interval == 0:
+                        
+                        
+            if steps % FLAGS.save_interval == 0:
                 save(model, FLAGS.save_dir, 'snapshot', steps)
 
 
@@ -72,13 +76,12 @@ def eval(data_iter, model, FLAGS):
     for batch in data_iter:
         feature, target = batch.text.to(device), batch.label.to(device)
         #feature.t_(), target.sub_(1)
-        
         embedd_matrix = _idx2emb(feature)
-        logit= model(embedd_matrix)
-        loss = criterion( logit, target)
+        logit = model(embedd_matrix)
+        loss = criterion(logit, target)
 
         avg_loss += loss.item()
-        corrects += (torch.max(logit,  1)
+        corrects += (torch.max(logit, 1)
                      [1].view(target.size()).data == target.data).sum()
 
     size = len(data_iter.dataset)
@@ -110,7 +113,7 @@ def test(data_iter, model, FLAGS):
     size = len(data_iter.dataset)
     avg_loss /= size
     accuracy = 100.0 * corrects/size
-    print('\Test - loss: {:.6f}  acc: {:.4f}%({}/{}) \n'.format(avg_loss, 
+    print('\nTest - loss: {:.6f}  acc: {:.4f}%({}/{}) \n'.format(avg_loss, 
                                                                        accuracy, 
                                                                        corrects, 
                                                                        size))
