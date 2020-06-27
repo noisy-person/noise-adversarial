@@ -16,25 +16,25 @@ from utils import get_length
 from torch.nn.utils.rnn import pad_sequence
 import collections
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.cuda.set_device(1)
+torch.cuda.set_device(3)
 
 PAD_IDX = 1
 
 
 FLAGS = flags.FLAGS
-
+#AG_NEWS vocab 30002 / class 4
+#TREC vocab 8982 / class 6
 # dataset hyperparameter
-flags.DEFINE_string('dataset', 'ag_news', '')
-flags.DEFINE_string('data_path', './data/ag_news', '')
-flags.DEFINE_string('emb_path', './data/glove/glove.840B.300d.txt', '')
-flags.DEFINE_string('voc_path', './data/ag_news/vocab.txt', '')
-flags.DEFINE_integer('embed_num', 30002, '')
-flags.DEFINE_integer('class_num', 4, '')
+flags.DEFINE_string('dataset', 'TREC', '')
+flags.DEFINE_string('data_path', './data/TREC', '')
+flags.DEFINE_string('emb_path', './data/TREC/TREC_emb.pkl', '')
+flags.DEFINE_integer('embed_num', 8982, '')
+flags.DEFINE_integer('class_num', 6, '')
 
 # learning
 flags.DEFINE_float('lr',  default=0.001, help='initial learning rate [default: 0.001]')
 flags.DEFINE_integer('epochs',  default=40, help='number of epochs for train [default: 256]')
-flags.DEFINE_integer('batch_size',  default=100, help='batch size for training [default: 64]')
+flags.DEFINE_integer('batch_size',  default=50, help='batch size for training [default: 64]')
 flags.DEFINE_integer('log_interval',   default=1,   help='how many steps to wait before logging training status [default: 1]')
 flags.DEFINE_integer('test_interval',  default=100, help='how many steps to wait before testing [default: 100]')
 flags.DEFINE_integer('save_interval',  default=500, help='how many steps to wait before saving [default:500]')
@@ -55,20 +55,34 @@ flags.DEFINE_string('kernel_sizes',  default='3,4,5', help='comma-separated kern
 flags.DEFINE_bool('static',  default=False, help='fix the embedding')
 
 # option
-flags.DEFINE_string('snapshot',  default=None, help='filename of model snapshot [default: None] ex)snapshot/2020-06-13_13-10-02/best_steps_4000.pt')
+flags.DEFINE_string('snapshot',  default='snapshot/2020-06-27_10-49-45/best_steps_1000.pt', help='filename of model snapshot [default: None] ex)snapshot/2020-06-27_05-46-25/best_steps_27300.pt')
 flags.DEFINE_string('predict',  default=None, help='predict the sentence given')
-flags.DEFINE_bool('train',  default=True, help='train or test')
+flags.DEFINE_bool('train',  default=False, help='train or test')
 flags.DEFINE_bool('test',  default=True, help='train or test')
 flags.DEFINE_float('noise_rate',  default=0.7, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_bool('fake',  default=True, help='fake dataset')
+
 
 
 
 def generate_batch(data):
+    def get_length(feature):
+        seq_length = feature.size()[1]
+        one_sum = torch.sum( \
+            torch.eq( \
+                feature,torch.ones(feature.size(),dtype=torch.long)).long() \
+                    ,-1)
+
+        return seq_length-one_sum
     fields=collections.namedtuple(  # pylint: disable=invalid-name
             "fields", ["text", "label","input_length"])
-    labels,texts = list(zip(*data))
- 
-    
+    #labels should be a list of labels and texts should be list of torch tensor 
+
+    if FLAGS.dataset == "AG_NEWS":
+        labels,texts = list(zip(*data))
+    if FLAGS.dataset == "TREC":
+        labels,texts = [record.label for record in data], [torch.LongTensor(record.text) for record in data]
+
     padded_texts= pad_sequence(list(texts),batch_first=True,padding_value=PAD_IDX)
 
     input_length = get_length(padded_texts)
@@ -77,14 +91,24 @@ def generate_batch(data):
 
 def main(argv):
     logging.info('Running under Python {0[0]}.{0[1]}.{0[2]}'.format(sys.version_info))
-    train_iter = pickle.load( \
-        open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_train_iter_{FLAGS.noise_rate}.pkl'), mode='rb'))
-    dev_iter = pickle.load( \
-        open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_dev_iter_{FLAGS.noise_rate}.pkl'), mode='rb'))
-    test_iter = pickle.load( \
-        open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_test_iter_{FLAGS.noise_rate}.pkl'), mode='rb'))
-    
+    if FLAGS.fake ==True:
 
+        train_iter = pickle.load( \
+            open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_train_iter_fake_{FLAGS.noise_rate}.pkl'), mode='rb'))
+        dev_iter = pickle.load( \
+            open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_dev_iter_fake_{FLAGS.noise_rate}.pkl'), mode='rb'))
+        test_iter = pickle.load( \
+            open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_test_iter_fake_{FLAGS.noise_rate}.pkl'), mode='rb'))
+        
+    else:
+
+        train_iter = pickle.load( \
+            open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_train_iter_{FLAGS.noise_rate}.pkl'), mode='rb'))
+        dev_iter = pickle.load( \
+            open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_dev_iter_{FLAGS.noise_rate}.pkl'), mode='rb'))
+        test_iter = pickle.load( \
+            open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_test_iter_{FLAGS.noise_rate}.pkl'), mode='rb'))
+        
     """
     for i,batch in enumerate(train_iter):
         feature, target, input_length = batch.text, batch.label,batch.input_length

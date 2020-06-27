@@ -16,7 +16,7 @@ class idx2emb(nn.Module):
         V = FLAGS.embed_num
         D = FLAGS.embed_dim
 
-        with open("./data/ag_news/ag_news_emb.pkl",'rb') as f:
+        with open(FLAGS.emb_path,'rb') as f:
             pretrained=pickle.load(f)
         self.embed = nn.Embedding(V, D,padding_idx=PAD_IDX)
         self.embed.weight.data.copy_(torch.FloatTensor(pretrained))
@@ -86,7 +86,7 @@ def _l2_normalize(d,norm_length):
     return norm_length * d_unit
 
 
-def vat_loss(model, feature, logit, input_length, xi=1e-6, eps=7.5, num_iters=1):
+def vat_loss(model, feature, logit, input_length, xi=1e-6, eps=2.5, num_iters=1):
 
     # find r 
 

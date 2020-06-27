@@ -5,6 +5,9 @@ from torch.nn.utils.rnn import pad_sequence
 from torch._utils import _accumulate
 from torch import randperm
 from torch.utils.data import DataLoader, Dataset
+from torchtext import data
+from torchtext import datasets
+from torchtext.vocab import GloVe
 
 import gensim
 import numpy as np
@@ -16,117 +19,70 @@ import os
 import random
 import collections
 
+from data_utils import build_trained_embedding,Subset,data_split
 
 
 FLAGS = flags.FLAGS
-
+#DBpedia:14
 # dataset
-flags.DEFINE_string('dataset', 'ag_news', '')
-flags.DEFINE_string('data_path', './data/ag_news', '')
-flags.DEFINE_string('emb_path', './data/glove.840B.300d.txt', '')
-flags.DEFINE_string('voc_path', './data/ag_news/vocab.txt', '')
+flags.DEFINE_string('dataset', 'TREC', '') # AG_NEWS,TREC,DBpedia
+flags.DEFINE_string('data_path', './data/TREC', '')
+flags.DEFINE_string('emb_path', './data/glove/glove.840B.300d.txt', '')
 
 flags.DEFINE_integer('ngram', 2, '')
 # model parameters
 flags.DEFINE_integer('emb_dim', 300, '')
 
 #mode 
-flags.DEFINE_bool('generate_dataset', False, '')
+flags.DEFINE_bool('generate_dataset', True, '')
 flags.DEFINE_bool('generate_noise_dataset', True, '')
-flags.DEFINE_bool('generate_pretrained', False, '')
+flags.DEFINE_bool('generate_pretrained', True, '')
 
 #noise 
 flags.DEFINE_float('noise_rate', 0.7, '')
 flags.DEFINE_string('noise_mode', 'sym', '')
-flags.DEFINE_float('train_rate', 0.9, '')
-flags.DEFINE_integer('train_size', 108000, '')
+flags.DEFINE_bool('fake', True, '')
+
+flags.DEFINE_float('train_rate', 0.7, '')
 
 #hyperparameter
-flags.DEFINE_integer('vocab_size', 30002, '')
+flags.DEFINE_integer('vocab_size', 9000, '')
 flags.DEFINE_integer('batch_size', 100, '')
 
-flags.DEFINE_integer('class_size', 4, '')
 
 PAD_IDX = 1
 
 
-class Subset(Dataset):
-    r"""
-    Subset of a dataset at specified indices.
 
-    Arguments:
-        dataset (Dataset): The whole Dataset
-        indices (sequence): Indices in the whole set selected for subset
-    """
-    def __init__(self, dataset, indices):
-        self.dataset = dataset
-        self.indices = indices
 
-    def __getitem__(self, idx):
-        return self.dataset[self.indices[idx]]
 
-    def __len__(self):
-        return len(self.indices)
 
-def get_length(feature):
-    seq_length = feature.size()[1]
-    one_sum = torch.sum( \
-        torch.eq( \
-            feature,torch.ones(feature.size(),dtype=torch.long)).long() \
-                ,-1)
+def generate_batch(data):
+    def get_length(feature):
+        seq_length = feature.size()[1]
+        one_sum = torch.sum( \
+            torch.eq( \
+                feature,torch.ones(feature.size(),dtype=torch.long)).long() \
+                    ,-1)
 
-    return seq_length-one_sum
+        return seq_length-one_sum
+    fields=collections.namedtuple(  # pylint: disable=invalid-name
+            "fields", ["text", "label","input_length"])
+    #labels should be a list of labels and texts should be list of torch tensor 
 
-def data_split(dataset, lengths,shuffeled_idx):
-    r"""
-    Randomly split a dataset into non-overlapping new datasets of given lengths.
+    if FLAGS.dataset == "AG_NEWS":
+        print(type(data))
+        labels,texts = list(zip(*data))
+    if FLAGS.dataset == "TREC":
+        print(type(data))
+        labels,texts = [record.label for record in data], [torch.LongTensor(record.text) for record in data]
 
-    Arguments:
-        dataset (Dataset): Dataset to be split
-        lengths (sequence): lengths of splits to be produced
-    """
-    if sum(lengths) != len(dataset):
-        raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
-    
-    splited_dataset=[]
-    for offset, length in zip(_accumulate(lengths), lengths):
-        splited = shuffeled_idx[offset - length:offset][:]
-        random.shuffle(splited)
-        splited_dataset.append(Subset(dataset, splited))
-    
-    return splited_dataset
+    padded_texts= pad_sequence(list(texts),batch_first=True,padding_value=PAD_IDX)
 
-def generate_noiselabels(label):
-    #shuffle the index and split train/dev first and split noise /not noise after 
+    input_length = get_length(padded_texts)
 
-    label_size=len(label)
-    shuffeled_idx = randperm(label_size).tolist()
+    return fields(text=padded_texts, label=torch.LongTensor(labels),input_length = input_length)
 
-    
-    train_size=int(label_size*FLAGS.train_rate)
-    train_idx=shuffeled_idx[:train_size]
-    #random.shuffle(train_idx)
-
-    noise_size = int(FLAGS.noise_rate*train_size)   
-    noise_idx = train_idx[:noise_size]
-    noised_labels = []
- 
-    for i in range(label_size):
-        if i in noise_idx:
-            
-            if FLAGS.noise_mode=='sym':
-                if FLAGS.dataset=='ag_news': 
-                    numbers = list(range(0,4))
-                    numbers.remove(label[i])
-                    noiselabel=random.choice(numbers)
-
-                    #print(noiselabel)
-
-                noised_labels.append(noiselabel)
-
-        else:    
-            noised_labels.append(label[i]) 
-    return noised_labels,shuffeled_idx
 
 def generate_noiselabels_withdevnoise(label):
     #shuffle the index and split train/dev first and split noise /not noise after 
@@ -152,12 +108,20 @@ def generate_noiselabels_withdevnoise(label):
         if i in noise_idx:
             
             if FLAGS.noise_mode=='sym':
-                if FLAGS.dataset=='ag_news': 
+                if FLAGS.dataset=='AG_NEWS': 
                     numbers = list(range(0,4))
-                    numbers.remove(label[i])
+                    if not FLAGS.fake :
+                        numbers.remove(label[i])
                     noiselabel=random.choice(numbers)
 
                     #print(noiselabel)
+                if FLAGS.dataset == 'TREC':
+                    #label candidate
+                    label_cand = ['ABBR', 'DESC', 'ENTY', 'HUM', 'LOC', 'NUM']
+                    if not FLAGS.fake :
+                        label_cand.remove(label[i])
+                    noiselabel=random.choice(label_cand)
+
 
                 noised_labels.append(noiselabel)
 
@@ -166,17 +130,31 @@ def generate_noiselabels_withdevnoise(label):
     return noised_labels,shuffeled_idx
 
 
-def generate_batch(data):
-    fields=collections.namedtuple(  # pylint: disable=invalid-name
-            "fields", ["text", "label","input_length"])
-    labels,texts = list(zip(*data))
- 
+
+def TREC_noisedata(train_dataset, **kwargs):
+
     
-    padded_texts= pad_sequence(list(texts),batch_first=True,padding_value=PAD_IDX)
 
-    input_length = get_length(padded_texts)
+    logging.info("before")
+    train_labels  = [record.label for record in train_dataset]
+    logging.info(train_labels[:100]) # (label, input_ids)으로 구성 
+    logging.info("generate noise")
+    noised_labels, shuffeled_idx=generate_noiselabels_withdevnoise(train_labels)
 
-    return fields(text=padded_texts, label=torch.LongTensor(labels),input_length = input_length)
+    logging.info("update dataset")
+    for i,record in enumerate(train_dataset):
+        train_dataset[i].label = noised_labels[i]
+
+    logging.info("after")
+    logging.info(noised_labels[:100])
+
+
+
+    train_len = int(len(train_dataset) * FLAGS.train_rate)
+    sub_train_, sub_valid_ = \
+        data_split(train_dataset, [train_len, len(train_dataset) - train_len],shuffeled_idx)
+  
+    return sub_train_, sub_valid_
 
 
 #load AG_NEWS  training samples is 108000/12000 and testing 7,600.
@@ -218,7 +196,6 @@ def AG_NEWS_noisedata(train_dataset, test_dataset, check_noise_data, **kwargs):
     train_len = int(len(train_dataset) * FLAGS.train_rate)
     sub_train_, sub_valid_ = \
         data_split(train_dataset, [train_len, len(train_dataset) - train_len],shuffeled_idx)
-
     train_iter = DataLoader(sub_train_, batch_size=FLAGS.batch_size, shuffle=True,
                         collate_fn=generate_batch)
     valid_iter = DataLoader(sub_valid_, batch_size=FLAGS.batch_size, shuffle=True,
@@ -227,70 +204,129 @@ def AG_NEWS_noisedata(train_dataset, test_dataset, check_noise_data, **kwargs):
                     collate_fn=generate_batch)
     return train_iter, valid_iter,test_iter 
 
-
-def build_trained_embedding(emb_path: str, emb_dim: int, vocab: dict) -> np.ndarray:
-    """
-    Extract pre-trained word embeddings from file (.pkl file)
-    Argument:
-        emb_path: embedding path
-        vocab: vocabulary for current dataset
-    Return:
-        numpy array which has 2-D embeddings (|vocab|, D)
-    """
-    iv = 0
-    emb = np.random.uniform(low=-0.25, high=0.25, size=(len(vocab), emb_dim))
-    
-    if 'glove' in emb_path:
-        with open(emb_path, mode='r', encoding='utf-8', errors='replace') as f:
-            for line in f:
-                line = line.replace('\n', '').split(' ')
-                word, vec = line[0], line[1:]
-                if word in vocab:
-                    emb[vocab[word]] = np.asarray(vec)
-                    iv += 1
-    elif 'Google' in emb_path:
-        model = gensim.models.KeyedVectors.load_word2vec_format(emb_path, binary=True)
-        for word in vocab:
-            if word in model.vocab:
-                emb[vocab[word]] = model.wv[word]
-                iv += 1
-    logging.info('Pre-trained embedding loaded [OOV = {}]'.format((len(vocab) - iv) / len(vocab)))
-    return emb
-
 def main(argv):
     del argv  # Unused.
     logging.info('Running under Python {0[0]}.{0[1]}.{0[2]}'.format(sys.version_info))
 
+    if FLAGS.dataset=='TREC':
+        if FLAGS.generate_dataset ==True:
+                                    
+            def only6label(dataset):
+                for data in dataset:
+                    data.label = data.label.split(":")[0]
+                return dataset 
 
-    if FLAGS.generate_dataset ==True:
-        #just for full size vocabulary 
-        train_dataset, test_dataset = text_classification.DATASETS['AG_NEWS'] \
-            (root=FLAGS.data_path,  ngrams=FLAGS.ngram ,vocab=None)
-        vocab=train_dataset.get_vocab()# ['<unk>', '<pad>'] are first
-        
-        #generate new vocab that satisfy the max size 
-        new_vocab = torchtext.vocab.Vocab(counter=vocab.freqs, max_size=30000, min_freq=5)
-        #generate train_dataset with new_vocab
-        new_train_dataset, new_test_dataset = text_classification.DATASETS['AG_NEWS'] \
-            (root=FLAGS.data_path,  ngrams=FLAGS.ngram ,vocab=new_vocab)
-        pickle.dump((new_train_dataset,new_test_dataset),\
-            open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_clean.pkl'),mode='wb'))        
-        logging.info('finished generating vocab and dataset  and saved')
+            TEXT = torchtext.data.Field(lower=True, include_lengths=True, batch_first=True)
+            LABEL = torchtext.data.Field(sequential=False)
 
-        if FLAGS.generate_pretrained ==True:
+            train, test = datasets.TREC.splits(TEXT, LABEL, fine_grained=True)  # text data as list 
+
+            train = only6label(train)
+            test = only6label(test)
+
+    
+            #pickle.dump(glove.vectors.numpy(), open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_emb.pkl'), mode='wb'))
+
+            #consider both train and test vocabulary
+            TEXT.build_vocab(train,test, max_size=FLAGS.vocab_size, min_freq=1)
+            LABEL.build_vocab(train)
+
+            #to save it to pickle convert generator to list
+            train = list(train)
+            test = list(test)
+            
+
+
+        if FLAGS.dataset is not None and FLAGS.generate_pretrained ==True:
             emb = build_trained_embedding(emb_path=FLAGS.emb_path, emb_dim=FLAGS.emb_dim, \
-                vocab=new_vocab.stoi)
+                vocab=TEXT.vocab.stoi)
             pickle.dump(emb, open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_emb.pkl'), mode='wb'))   
             logging.info('finished generating pretrained embeddings and saved')
         
 
-    if FLAGS.generate_noise_dataset ==True:
-        (train_dataset,test_dataset)=pickle.load( \
-            open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_clean.pkl'), mode='rb'))
-        train_iter,dev_iter, test_iter = \
-            AG_NEWS_noisedata(train_dataset, test_dataset, False)
 
-        logging.info("save noisy labels to %s ..."%os.path.join(FLAGS.data_path, FLAGS.dataset))        
+        if FLAGS.generate_noise_dataset ==True:             
+            #make noise!!!
+            sub_train, sub_valid = TREC_noisedata(train)
+
+            
+            #change word into id 
+            print(sub_train[0].text)
+            for i in range(len(sub_train)):
+                record = sub_train[i]
+
+                record.text = [TEXT.vocab.stoi[text] for text in record.text]
+                record.label= LABEL.vocab.stoi[record.label] 
+            print(sub_train[0].text)
+    
+            for i in range(len(sub_valid)):
+                record = sub_valid[i]
+
+                record.text = [TEXT.vocab.stoi[text] for text in record.text]
+                record.label= LABEL.vocab.stoi[record.label] 
+
+        
+            for i in range(len(test)):
+                record = test[i]
+
+                record.text = [TEXT.vocab.stoi[text] for text in record.text]
+                record.label= LABEL.vocab.stoi[record.label] 
+
+
+            train_iter = DataLoader(sub_train, batch_size=FLAGS.batch_size, shuffle=True,
+                                collate_fn=generate_batch)
+            dev_iter = DataLoader(sub_valid, batch_size=FLAGS.batch_size, shuffle=True,
+                            collate_fn=generate_batch)
+            test_iter = DataLoader(test, batch_size=len(test), 
+                            collate_fn=generate_batch)
+            
+            print(next(iter(train_iter)))
+        
+    if FLAGS.dataset=='AG_NEWS' or FLAGS.dataset=='DBpedia':
+        if FLAGS.generate_dataset ==True:
+            #just for full size vocabulary 
+            train_dataset, test_dataset = text_classification.DATASETS[FLAGS.dataset] \
+                (root=FLAGS.data_path,  ngrams=FLAGS.ngram ,vocab=None)
+
+            vocab_freqs=train_dataset.get_vocab().freqs + test_dataset.get_vocab().freqs# ['<unk>', '<pad>'] are first
+            
+            #generate new vocab that satisfy the max size 
+            new_vocab = torchtext.vocab.Vocab(counter=vocab_freqs, max_size=FLAGS.vocab_size, min_freq=5)
+            #generate train_dataset with new_vocab
+            new_train_dataset, new_test_dataset = text_classification.DATASETS[FLAGS.dataset] \
+                (root=FLAGS.data_path,  ngrams=FLAGS.ngram ,vocab=new_vocab)
+
+            pickle.dump((new_train_dataset,new_test_dataset),\
+                open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_clean.pkl'),mode='wb'))        
+            logging.info('finished generating vocab and dataset  and saved')
+
+
+
+
+            if FLAGS.dataset is not None and FLAGS.generate_pretrained ==True:
+                emb = build_trained_embedding(emb_path=FLAGS.emb_path, emb_dim=FLAGS.emb_dim, \
+                    vocab=new_vocab.stoi)
+                pickle.dump(emb, open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_emb.pkl'), mode='wb'))   
+                logging.info('finished generating pretrained embeddings and saved')
+            
+
+        if FLAGS.generate_noise_dataset ==True:
+            (train_dataset,test_dataset)=pickle.load( \
+                open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_clean.pkl'), mode='rb'))
+
+            train_iter,dev_iter, test_iter = AG_NEWS_noisedata(train_dataset, test_dataset, False)
+            print(next(iter(train_iter)))
+                   
+
+            
+    logging.info("save noisy labels to %s ..."%os.path.join(FLAGS.data_path, FLAGS.dataset)) 
+    #save it 
+    if FLAGS.fake == True:
+
+        pickle.dump(train_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_train_iter_fake_{FLAGS.noise_rate}.pkl'), mode='wb'))  
+        pickle.dump(dev_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_dev_iter_fake_{FLAGS.noise_rate}.pkl'), mode='wb'))   
+        pickle.dump(test_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_test_iter_fake_{FLAGS.noise_rate}.pkl'), mode='wb'))   
+    else:
         pickle.dump(train_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_train_iter_{FLAGS.noise_rate}.pkl'), mode='wb'))  
         pickle.dump(dev_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_dev_iter_{FLAGS.noise_rate}.pkl'), mode='wb'))   
         pickle.dump(test_iter, open(os.path.join(FLAGS.data_path, FLAGS.dataset + f'_test_iter_{FLAGS.noise_rate}.pkl'), mode='wb'))   
