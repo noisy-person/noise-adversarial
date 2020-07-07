@@ -6,11 +6,14 @@ import torch.nn.functional as F
 import pickle 
 from utils import idx2emb, vat_loss
 from torch.utils.tensorboard import SummaryWriter
+import torch.nn as nn
+
 
 writer = SummaryWriter()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+#logit - max 
 def get_diff(logit,target):
 
     target_logit =torch.gather(logit,1,target.unsqueeze(-1))
@@ -20,18 +23,18 @@ def get_diff(logit,target):
     return mean_diff.item()
 
 
-
+# logit  - average logits over all mislabeled logits
 def get_diff_2(logit,target):
     class_num = logit.shape[1]
     target_logit =torch.gather(logit,1,target.unsqueeze(-1))
     sum_logit =  torch.sum(logit,dim=1,keepdim=True)
-    mean_diff = torch.abs((sum_logit -target_logit)/(class_num-1))
+    mean_diff = torch.abs((sum_logit -target_logit)/(class_num-1)-target_logit)
     mean_diff= torch.mean(mean_diff)
 
     return mean_diff.item()
 
 
-
+#logit -max if target idx and max logit idx is different else logit 
 def get_diff_3(logit,target):
 
     target_logit =torch.gather(logit,1,target.unsqueeze(-1))
@@ -49,14 +52,19 @@ def get_diff_3(logit,target):
 
 
 def train(train_iter, dev_iter, model, FLAGS):
+    if FLAGS.multi_gpu :
+        model = nn.DataParallel(model)
+
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.lr)
     criterion = torch.nn.CrossEntropyLoss().to(device)
     steps = 0
     best_acc = 0
     last_step = 0
-    
-    _idx2emb = idx2emb(FLAGS).to(device)
+    if FLAGS.multi_gpu :
+        _idx2emb = nn.DataParallel(idx2emb(FLAGS).to(device))
+    else:
+        _idx2emb = idx2emb(FLAGS).to(device)
     for epoch in range(1, FLAGS.epochs+1):
 
         for batch in train_iter:
@@ -76,15 +84,11 @@ def train(train_iter, dev_iter, model, FLAGS):
             #print('logit vector', logit.size())
             #print('target vector', target.size())
             """
-            if steps<1000:
+            if steps<8000:
                 epsilon = 2.5
             else:
                 epsilon = 0.0001*(steps)+2.5
             """
-            if steps<500:
-                epsilon = 2.5
-            else:
-                epsilon = 0.0001*(steps)+2.5
             epsilon = 2.5
             v_loss = vat_loss(model, embedd_matrix, logit,input_length, eps=epsilon)
             ce_loss = criterion(logit, target) 
@@ -93,6 +97,7 @@ def train(train_iter, dev_iter, model, FLAGS):
             #print(loss)
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             optimizer.step()
 
             steps += 1
@@ -124,7 +129,7 @@ def train(train_iter, dev_iter, model, FLAGS):
                     last_step = steps
                     if FLAGS.save_best:
                         print(f"best accuracy : {best_acc}")
-                        save(model, FLAGS.save_dir, 'best', steps)
+                        save(model, FLAGS, 'best', steps)
                 else:
                     if steps - last_step >= FLAGS.early_stop:
                         
@@ -132,7 +137,7 @@ def train(train_iter, dev_iter, model, FLAGS):
                         
                         
             if steps % FLAGS.save_interval == 0:
-                save(model, FLAGS.save_dir, 'snapshot', steps)
+                save(model, FLAGS, 'snapshot', steps)
 
 
 def eval(data_iter, model, steps,FLAGS):
@@ -216,9 +221,12 @@ def predict(text, model, text_field, label_feild):
     return label_feild.vocab.itos[predicted.data[0]+1]
 """
 
-def save(model, save_dir, save_prefix, steps):
-    if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
-    save_prefix = os.path.join(save_dir, save_prefix)
+def save(model, FLAGS, save_prefix, steps):
+    if not os.path.isdir(FLAGS.save_dir):
+        os.makedirs(FLAGS.save_dir)
+    save_prefix = os.path.join(FLAGS.save_dir, save_prefix)
     save_path = '{}_steps_{}.pt'.format(save_prefix, steps)
-    torch.save(model.state_dict(), save_path)
+    if FLAGS.multi_gpu:
+        torch.save(model.module.state_dict(), save_path)
+    else:
+        torch.save(model.state_dict(), save_path)

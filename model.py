@@ -10,7 +10,7 @@ class NoiseModel(nn.Module):
     def __init__(self, num_class: int):
         super(NoiseModel, self).__init__()
         self.num_class = num_class
-        self.transition_mat = Parameter(torch.eye(num_class))
+        self.transition_mat = Parameter(self.num_class*torch.eye(num_class))
 
     def forward(self, x):
         """
@@ -19,7 +19,7 @@ class NoiseModel(nn.Module):
         return:
             noise distribution
         """
-        out = torch.matmul(x, self.transition_mat)
+        out = torch.matmul(x, self.transition_mat.T)
 
         return out
 

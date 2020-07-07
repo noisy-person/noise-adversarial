@@ -6,8 +6,37 @@ import numpy as np
 from absl import app, flags, logging
 import sys
 
+def generate_noisematrix( n_class,noiselvl):
 
+    def minDiagonalSwap(nums, index):
+        """ Return inplace swaped.
+        Swap the diagonal element with the minimum element in the array
+        return inplace altered list.
+        """
+        ind = np.argmin(nums)
+        temp = nums[index]
+        nums[index] = nums[ind]
+        nums[ind] = temp
+        return
+   
+    
+    noise_matrix = np.zeros([n_class, n_class], dtype='float')
 
+    if n_class <= 2:
+        noise_matrix =  noiselvl*(np.ones(n_class, dtype='float') - np.eye(n_class, dtype='float'))
+    else:
+        # Defines random noise over unit simplex
+        
+        for a in range(n_class):
+            nums = [np.random.randint(0, 10)*1.0 for x in  range(n_class)]
+            #print(nums)
+            #print(nums[1]/sum(np.array(nums)))
+            nums = noiselvl*(nums/sum(np.array(nums)))
+            #print(nums)
+            minDiagonalSwap(nums, a)
+            noise_matrix[a, :] = nums
+            #print(noise_matrix)
+    return noise_matrix
 
 def data_split(dataset, lengths,shuffeled_idx):
     r"""

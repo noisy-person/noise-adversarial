@@ -100,7 +100,7 @@ def vat_loss(model, feature, logit, input_length, xi=1e-6, eps=2.5, num_iters=1)
         delta_kl = kl_div_with_logit(logit.detach(), y_hat)
         delta_kl.backward()
 
-        d = d.grad.data.clone().cpu()
+        d = d.grad.data.clone()
         model.zero_grad()
 
     #d = _l2_normalize(d)
