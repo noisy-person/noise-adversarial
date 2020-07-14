@@ -4,8 +4,8 @@ import datetime
 import torch
 
 import model
-import train
-#import train_adv as train
+#import train
+import train_adv as train
 #import train_clean as train
 import pickle 
 from absl import app, flags, logging
@@ -16,7 +16,7 @@ from utils import get_length
 from torch.nn.utils.rnn import pad_sequence
 import collections
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.cuda.set_device(0)
+torch.cuda.set_device(2)
 
 PAD_IDX = 1
 
@@ -27,14 +27,21 @@ FLAGS = flags.FLAGS
 #TREC vocab 8982 / class 6
 #SST vocab 19538 / class 2 / 3,4,5 / feature size 100 /batch 100
 # dataset hyperparameter
+
 flags.DEFINE_string('dataset', 'AG_NEWS', '')
 flags.DEFINE_string('data_path', './data/AG_NEWS', '')
 flags.DEFINE_string('emb_path', './data/AG_NEWS/AG_NEWS_emb.pkl', '')
 flags.DEFINE_integer('embed_num', 50002, '')
 flags.DEFINE_integer('class_num', 4, '')
-
+"""
+flags.DEFINE_string('dataset', 'TREC', '')
+flags.DEFINE_string('data_path', './data/TREC', '')
+flags.DEFINE_string('emb_path', './data/TREC/TREC_emb.pkl', '')
+flags.DEFINE_integer('embed_num', 8982, '')
+flags.DEFINE_integer('class_num', 6, '')
+"""
 # learning
-flags.DEFINE_float('lr',  default=0.001, help='initial learning rate [default: 0.001]')
+flags.DEFINE_float('lr',  default=0.002, help='initial learning rate [default: 0.001]')
 flags.DEFINE_integer('epochs',  default=40, help='number of epochs for train [default: 256]')
 flags.DEFINE_integer('batch_size',  default=100, help='batch size for training [default: 64]')
 flags.DEFINE_integer('log_interval',   default=1,   help='how many steps to wait before logging training status [default: 1]')
@@ -47,7 +54,7 @@ flags.DEFINE_integer('ngram',  default=2, help='include ngram vocab')
 
 
 # model
-flags.DEFINE_string('mode',  default='transition', help='choose one of [transition,clean,adv] dont forget to import different train code ')
+flags.DEFINE_string('mode',  default='adv', help='choose one of [transition,clean,adv] dont forget to import different train code ')
 flags.DEFINE_string('noise_mode',  default='sym', help='asym or sym')
 flags.DEFINE_float('dropout',  default=0.5, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_float('max_norm',  default=3.0, help='l2 constraint of parameters [default: 3.0]')
@@ -57,7 +64,7 @@ flags.DEFINE_string('kernel_sizes',  default='3,4,5', help='comma-separated kern
 flags.DEFINE_bool('static',  default=False, help='fix the embedding')
 
 # option
-flags.DEFINE_string('snapshot',  default=None, help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_03-47-58/best_steps_400.pt')
+flags.DEFINE_string('snapshot',  default=None, help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
 flags.DEFINE_string('predict',  default=None, help='predict the sentence given')
 flags.DEFINE_bool('train',  default=True, help='train or test')
 flags.DEFINE_bool('test',  default=True, help='train or test')

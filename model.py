@@ -31,7 +31,7 @@ class CNN_Text_adv(nn.Module):
         super(CNN_Text_adv, self).__init__()
 
         self.FLAGS = FLAGS
-        
+        self.context_vec = None
         V = FLAGS.embed_num
         D = FLAGS.embed_dim
         C = FLAGS.class_num
@@ -57,6 +57,15 @@ class CNN_Text_adv(nn.Module):
 
 
 
+    def context_forward(self, x):
+        
+
+
+        x = self.dropout(x)  # (N, len(Ks)*Co)
+        logit = self.fc1(x)  # (N, C)
+
+        return logit       
+
 
     def forward(self, x):
         
@@ -68,6 +77,7 @@ class CNN_Text_adv(nn.Module):
         x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # [(N, Co), ...]*len(Ks)
 
         x = torch.cat(x, 1)
+        self.context_vec = x
 
 
         x = self.dropout(x)  # (N, len(Ks)*Co)
@@ -108,8 +118,6 @@ class CNN_Text(nn.Module):
         self.dropout = nn.Dropout(FLAGS.dropout)
         self.fc1 = nn.Linear(len(Ks)*Co, C)
         nn.init.kaiming_normal_(self.fc1.weight.data)
-
-
 
 
     def infer(self, x):

@@ -29,7 +29,8 @@ class idx2emb(nn.Module):
 def sequence_mask(length, maxlen=None):
     if maxlen is None:
         maxlen = length.max()
-    row_vector = torch.arange(0, maxlen, 1).to('cpu')
+    row_vector = torch.arange(0, maxlen, 1)
+
     matrix = torch.unsqueeze(length, dim=-1)
     mask = row_vector < matrix
 
@@ -66,10 +67,19 @@ def kl_div_with_logit(p_logit, q_logit):
     return plogp - plogq
 """
 def _l2_normalize(d,norm_length):
+    # shape(x) = (batch, num_timesteps, d)
+    # Divide x by max(abs(x)) for a numerically stable L2 norm.
+    # 2norm(x) = a * 2norm(x/a)
+    # Scale over the full sequence, dims (1, 2)  
+    alpha = torch.max(torch.abs(d),-1,keepdim=True).values + 1e-24
+    #  l2_norm = alpha * tf.sqrt(
+    #  tf.reduce_sum(tf.pow(x / alpha, 2), (1, 2), keep_dims=True) + 1e-6)
+    l2_norm = alpha * torch.sqrt(
+        torch.sum((d/alpha)**2, (1,2),keepdim=True)  + 1e-16
+    )
+    d_unit = d/ l2_norm
+    return norm_length * d_unit
 
-    d = d.numpy()
-    d /= (np.sqrt(np.sum(d ** 2, axis=(1, 2))).reshape((-1, 1, 1)) + 1e-16)
-    return torch.from_numpy(d)
 """
 def _l2_normalize(d,norm_length):
     # shape(x) = (batch, num_timesteps, d)
@@ -80,7 +90,7 @@ def _l2_normalize(d,norm_length):
     #  l2_norm = alpha * tf.sqrt(
     #  tf.reduce_sum(tf.pow(x / alpha, 2), (1, 2), keep_dims=True) + 1e-6)
     l2_norm = alpha * torch.sqrt(
-        torch.sum((d/alpha)**2, (1,2),keepdim=True)  + 1e-16
+        torch.sum((d/alpha)**2, (1),keepdim=True)  + 1e-16
     )
     d_unit = d/ l2_norm
     return norm_length * d_unit
@@ -113,6 +123,34 @@ def vat_loss(model, feature, logit, input_length, xi=1e-6, eps=2.5, num_iters=1)
     delta_kl = kl_div_with_logit(logit.detach(), y_hat)
     return delta_kl
 
+def vat_loss_ours(model, feature, logit, input_length, xi=1e-6, eps=2.5, num_iters=1):
+
+    #feature is context vector (batch, kernel_num*kernel_size)
+    # find r 
+   
+
+    d = torch.Tensor(feature.size()).normal_()
+    for i in range(num_iters):
+        #d = 1e-3 *_l2_normalize(mask_by_length(d,input_length))
+        d = _l2_normalize(
+            d , xi)
+        d = Variable(d.cuda(), requires_grad=True)
+        y_hat = model.context_forward(feature.detach() + d)
+        delta_kl = kl_div_with_logit(logit.detach(), y_hat)
+        delta_kl.backward()
+
+        d = d.grad.data.clone()
+        model.zero_grad()
+    
+    #d = _l2_normalize(d)
+    d=_l2_normalize(d,eps)
+    d = Variable(d.cuda())
+    #r_adv = eps *d
+    # compute lds
+    y_hat = model.context_forward(feature + d.detach())
+    #y_hat = model(feature + r_adv.detach())
+    delta_kl = kl_div_with_logit(logit.detach(), y_hat)
+    return delta_kl
 
 def entropy_loss(ul_y):
     p = F.softmax(ul_y, dim=1)

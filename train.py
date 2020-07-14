@@ -141,14 +141,14 @@ def eval(data_iter, model, steps,FLAGS):
         #feature.t_(), target.sub_(1)
     
         noise_logit,clean_logit = model(feature)
-        loss = criterion(logit, target)
+        loss = criterion(clean_logit, target)
 
-        mean_diff += get_diff(logit, target)
-        mean_diff_2 += get_diff_2(logit, target)
-        mean_diff_3 += get_diff_3(logit, target)
+        mean_diff += get_diff(clean_logit, target)
+        mean_diff_2 += get_diff_2(clean_logit, target)
+        mean_diff_3 += get_diff_3(clean_logit, target)
         
         avg_loss += loss.item()
-        corrects += (torch.max(logit, 1)
+        corrects += (torch.max(clean_logit, 1)
                      [1].view(target.size()).data == target.data).sum()
 
     size = len(data_iter.dataset)

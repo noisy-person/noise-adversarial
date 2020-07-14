@@ -4,7 +4,7 @@ import torch
 import torch.autograd as autograd
 import torch.nn.functional as F
 import pickle 
-from utils import idx2emb, vat_loss
+from utils import idx2emb, vat_loss,vat_loss_ours
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn as nn
 
@@ -56,7 +56,11 @@ def train(train_iter, dev_iter, model, FLAGS):
         model = nn.DataParallel(model)
 
     model.to(device)
+
     optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.lr)
+    decayRate = 0.9
+    my_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=decayRate)
+
     criterion = torch.nn.CrossEntropyLoss().to(device)
     steps = 0
     best_acc = 0
@@ -66,11 +70,12 @@ def train(train_iter, dev_iter, model, FLAGS):
     else:
         _idx2emb = idx2emb(FLAGS).to(device)
     for epoch in range(1, FLAGS.epochs+1):
-
+        print(f"epoch : {epoch}")
+            
         for batch in train_iter:
             model.train()
             
-            feature, target, input_length = batch.text.to(device), batch.label.to(device)  , batch.input_length.to('cpu') 
+            feature, target, input_length = batch.text.to(device), batch.label.to(device)  , batch.input_length.to(device) 
             #feature.t_(), target.sub_(1)
 
             
@@ -81,16 +86,13 @@ def train(train_iter, dev_iter, model, FLAGS):
 
 
             logit = model(embedd_matrix)
+         
             #print('logit vector', logit.size())
             #print('target vector', target.size())
-            """
-            if steps<8000:
-                epsilon = 2.5
-            else:
-                epsilon = 0.0001*(steps)+2.5
-            """
-            epsilon = 2.5
-            v_loss = vat_loss(model, embedd_matrix, logit,input_length, eps=epsilon)
+            epsilon = 5.0
+
+            #v_loss = vat_loss(model, embedd_matrix, logit,input_length, eps=epsilon)
+            v_loss = vat_loss_ours(model, model.context_vec, logit,input_length, eps=epsilon)
             ce_loss = criterion(logit, target) 
             loss = ce_loss + v_loss
 
@@ -99,7 +101,9 @@ def train(train_iter, dev_iter, model, FLAGS):
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             optimizer.step()
-
+            
+            if steps %600==0 :
+                my_lr_scheduler.step()
             steps += 1
             if steps % FLAGS.log_interval == 0:
                 corrects = (torch.max(logit, 1)[1].view(target.size()).data == target.data).sum()
