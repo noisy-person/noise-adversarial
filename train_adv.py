@@ -70,7 +70,7 @@ def train(train_iter, dev_iter, model, FLAGS):
     else:
         _idx2emb = idx2emb(FLAGS).to(device)
     for epoch in range(1, FLAGS.epochs+1):
-        print(f"epoch : {epoch}")
+        print(f"\nepoch : {epoch}")
             
         for batch in train_iter:
             model.train()
@@ -102,7 +102,7 @@ def train(train_iter, dev_iter, model, FLAGS):
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             optimizer.step()
             
-            if steps %600==0 :
+            if steps %1000==0 :
                 my_lr_scheduler.step()
             steps += 1
             if steps % FLAGS.log_interval == 0:
@@ -134,14 +134,7 @@ def train(train_iter, dev_iter, model, FLAGS):
                     if FLAGS.save_best:
                         print(f"best accuracy : {best_acc}")
                         save(model, FLAGS, 'best', steps)
-                else:
-                    if steps - last_step >= FLAGS.early_stop:
-                        
-                        print('early stop by {} steps.'.format(FLAGS.early_stop))
-                        
-                        
-            if steps % FLAGS.save_interval == 0:
-                save(model, FLAGS, 'snapshot', steps)
+
 
 
 def eval(data_iter, model, steps,FLAGS):

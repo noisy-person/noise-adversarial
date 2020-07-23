@@ -26,7 +26,7 @@ from data_utils import build_trained_embedding,Subset,data_split,generate_noisem
 FLAGS = flags.FLAGS
 #AG_NEWS vocab 50002 / class 4
 #DBpedia:14
-#TREC vocab 8982 / class 6
+#TREC vocab 8982 / class 6 /batch 50
 #SST : 2  , vocab--> 20000 , batch 100
 # dataset # AG_NEWS,TREC,DBpedia,SST
 flags.DEFINE_string('dataset', 'TREC', '') 
@@ -38,14 +38,14 @@ flags.DEFINE_integer('ngram', 2, '')
 flags.DEFINE_integer('emb_dim', 300, '')
 
 #mode 
-flags.DEFINE_bool('generate_dataset', True, '')
-flags.DEFINE_bool('generate_pretrained', True, '')
+flags.DEFINE_bool('generate_dataset', False, '')
+flags.DEFINE_bool('generate_pretrained', False, '')
 flags.DEFINE_bool('generate_noise_dataset', True, '')
 
 #noise 
-flags.DEFINE_float('noise_rate', 0.7, '')
+flags.DEFINE_float('noise_rate', 0.9, '')
 flags.DEFINE_string('noise_mode', 'sym', '') # asym , sym  if asym fake must set to True
-flags.DEFINE_bool('fake', True, '')
+flags.DEFINE_bool('fake', True, '') # if fake include the true label in the flipping label candidates
 
 flags.DEFINE_float('train_rate', 0.9, '')
 
@@ -369,33 +369,38 @@ def main(argv):
         
 
     if FLAGS.dataset=='TREC':
-        if FLAGS.generate_dataset ==True:
                                     
-            def only6label(dataset):
-                for data in dataset:
-                    data.label = data.label.split(":")[0]
-                return dataset 
+        def only6label(dataset):
+            for data in dataset:
+                data.label = data.label.split(":")[0]
+            return dataset 
 
-            TEXT = torchtext.data.Field(lower=True, include_lengths=True, batch_first=True)
-            LABEL = torchtext.data.Field(sequential=False)
+        TEXT = torchtext.data.Field(lower=True, include_lengths=True, batch_first=True)
+        LABEL = torchtext.data.Field(sequential=False)
 
-            train, test = datasets.TREC.splits(TEXT, LABEL, fine_grained=True)  # text data as list 
+        
 
-            train = only6label(train)
-            test = only6label(test)
+        
+        train, test = datasets.TREC.splits(TEXT, LABEL, fine_grained=True)  # text data as list 
+        pickle.dump([list(train),list(test)], open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_clean.pkl'), mode='wb'))   
+        logging.info('finished generating pretrained embeddings and saved')
 
-    
-            #pickle.dump(glove.vectors.numpy(), open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_emb.pkl'), mode='wb'))
 
-            #consider both train and test vocabulary
-            TEXT.build_vocab(train,test, max_size=FLAGS.vocab_size, min_freq=1)
-            LABEL.build_vocab(train)
+        train = only6label(train)
+        test = only6label(test)
 
-            #to save it to pickle convert generator to list
-            train = list(train)
-            test = list(test)
 
-    
+        #pickle.dump(glove.vectors.numpy(), open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_emb.pkl'), mode='wb'))
+
+        #consider both train and test vocabulary
+        TEXT.build_vocab(train,test, max_size=FLAGS.vocab_size, min_freq=1)
+        LABEL.build_vocab(train)
+
+        #to save it to pickle convert generator to list
+        train = list(train)
+        test = list(test)
+
+
 
             
 
@@ -405,8 +410,9 @@ def main(argv):
                 vocab=TEXT.vocab.stoi)
             pickle.dump(emb, open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_emb.pkl'), mode='wb'))   
             logging.info('finished generating pretrained embeddings and saved')
+        else :
+            emb =pickle.load(open(os.path.join(FLAGS.data_path, FLAGS.dataset + '_emb.pkl'), mode='rb'))
         
-
 
         if FLAGS.generate_noise_dataset ==True:             
             #make some noise!!!
