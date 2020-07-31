@@ -57,6 +57,7 @@ def train(train_iter, dev_iter, model, FLAGS):
 
     model.to(device)
 
+    #patience =0
     optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.lr)
     decayRate = 0.9
     my_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=decayRate)
@@ -70,7 +71,15 @@ def train(train_iter, dev_iter, model, FLAGS):
     else:
         _idx2emb = idx2emb(FLAGS).to(device)
     epsilon =FLAGS.epsilon
+
+    patience=0
     for epoch in range(1, FLAGS.epochs+1):
+
+        if patience>=FLAGS.patience and saved==0:
+            break
+        if epoch!=1 and saved==0:
+            patience+=1 
+        saved=0
         print(f"\nepoch : {epoch}")
             
         for batch in train_iter:
@@ -133,6 +142,8 @@ def train(train_iter, dev_iter, model, FLAGS):
                     if FLAGS.save_best:
                         print(f"best accuracy : {best_acc}")
                         save(model, FLAGS, 'best'+'_'+FLAGS.dataset+'_'+FLAGS.mode+'_'+FLAGS.noise_mode+'_'+str(FLAGS.noise_rate)+'_'+str(FLAGS.lr)+'_'+str(FLAGS.epsilon), steps)
+                        saved=1
+                        patience=0
 
 
 
