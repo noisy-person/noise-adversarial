@@ -54,6 +54,9 @@ def train(train_iter, dev_iter, model, FLAGS):
     model.to(device)
     lambda_=0.01
     optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.lr)
+    decayRate = 0.9
+    my_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=decayRate)
+
     criterion = torch.nn.CrossEntropyLoss().to(device)
     steps = 0
     best_acc = 0
@@ -86,6 +89,9 @@ def train(train_iter, dev_iter, model, FLAGS):
             optimizer.step()
 
             steps += 1
+            #if steps %1000==0 :
+            #    my_lr_scheduler.step()
+            
             if steps % FLAGS.log_interval == 0:
                 corrects = (torch.max(noise_logit, 1)[1].view(target.size()).data == target.data).sum()
                 accuracy = 100.0 * corrects/feature.shape[0]

@@ -69,6 +69,7 @@ def train(train_iter, dev_iter, model, FLAGS):
         _idx2emb = nn.DataParallel(idx2emb(FLAGS).to(device))
     else:
         _idx2emb = idx2emb(FLAGS).to(device)
+    epsilon =FLAGS.epsilon
     for epoch in range(1, FLAGS.epochs+1):
         print(f"\nepoch : {epoch}")
             
@@ -79,8 +80,6 @@ def train(train_iter, dev_iter, model, FLAGS):
             #feature.t_(), target.sub_(1)
 
             
-            
-            
             embedd_matrix = _idx2emb(feature)
 
 
@@ -89,8 +88,8 @@ def train(train_iter, dev_iter, model, FLAGS):
          
             #print('logit vector', logit.size())
             #print('target vector', target.size())
-            epsilon = 5.0
-
+            ##if steps %1000==0 and steps> 2000:
+            #    epsilon=epsilon-0.001
             #v_loss = vat_loss(model, embedd_matrix, logit,input_length, eps=epsilon)
             v_loss = vat_loss_ours(model, model.context_vec, logit,input_length, eps=epsilon)
             ce_loss = criterion(logit, target) 
@@ -101,10 +100,10 @@ def train(train_iter, dev_iter, model, FLAGS):
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             optimizer.step()
-            
-            if steps %1000==0 :
-                my_lr_scheduler.step()
             steps += 1
+            #if steps %1000==0 :
+            #    my_lr_scheduler.step()
+            
             if steps % FLAGS.log_interval == 0:
                 corrects = (torch.max(logit, 1)[1].view(target.size()).data == target.data).sum()
                 accuracy = 100.0 * corrects/feature.shape[0]
@@ -133,7 +132,7 @@ def train(train_iter, dev_iter, model, FLAGS):
                     last_step = steps
                     if FLAGS.save_best:
                         print(f"best accuracy : {best_acc}")
-                        save(model, FLAGS, 'best', steps)
+                        save(model, FLAGS, 'best'+'_'+FLAGS.dataset+'_'+FLAGS.mode+'_'+FLAGS.noise_mode+'_'+str(FLAGS.noise_rate)+'_'+str(FLAGS.lr)+'_'+str(FLAGS.epsilon), steps)
 
 
 

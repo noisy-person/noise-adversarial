@@ -6,7 +6,7 @@ import numpy as np
 from absl import app, flags, logging
 import sys
 
-def generate_noisematrix( n_class,noiselvl):
+def generate_noisematrix( n_class,noise_rate):
 
     def minDiagonalSwap(nums, index):
         """ Return inplace swaped.
@@ -23,7 +23,7 @@ def generate_noisematrix( n_class,noiselvl):
     noise_matrix = np.zeros([n_class, n_class], dtype='float')
 
     if n_class <= 2:
-        noise_matrix =  noiselvl*(np.ones(n_class, dtype='float') - np.eye(n_class, dtype='float'))
+        noise_matrix =  noise_rate*(np.ones(n_class, dtype='float') - np.eye(n_class, dtype='float'))
     else:
         # Defines random noise over unit simplex
         
@@ -31,7 +31,7 @@ def generate_noisematrix( n_class,noiselvl):
             nums = [np.random.randint(0, 10)*1.0 for x in  range(n_class)]
             #print(nums)
             #print(nums[1]/sum(np.array(nums)))
-            nums = noiselvl*(nums/sum(np.array(nums)))
+            nums = noise_rate*(nums/sum(np.array(nums)))
             #print(nums)
             minDiagonalSwap(nums, a)
             noise_matrix[a, :] = nums

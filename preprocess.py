@@ -29,8 +29,8 @@ FLAGS = flags.FLAGS
 #TREC vocab 8982 / class 6 /batch 50
 #SST : 2  , vocab--> 20000 , batch 100
 # dataset # AG_NEWS,TREC,DBpedia,SST
-flags.DEFINE_string('dataset', 'TREC', '') 
-flags.DEFINE_string('data_path', './data/TREC', '')
+flags.DEFINE_string('dataset', 'AG_NEWS', '') 
+flags.DEFINE_string('data_path', './data/AG_NEWS', '')
 flags.DEFINE_string('emb_path', './data/glove/glove.840B.300d.txt', '')
 
 flags.DEFINE_integer('ngram', 2, '')
@@ -43,16 +43,16 @@ flags.DEFINE_bool('generate_pretrained', False, '')
 flags.DEFINE_bool('generate_noise_dataset', True, '')
 
 #noise 
-flags.DEFINE_float('noise_rate', 0.9, '')
-flags.DEFINE_string('noise_mode', 'sym', '') # asym , sym  if asym fake must set to True
+flags.DEFINE_float('noise_rate', 0.7, '')
+flags.DEFINE_string('noise_mode', 'asym', '') # asym , sym  if asym fake must set to True
 flags.DEFINE_bool('fake', True, '') # if fake include the true label in the flipping label candidates
 
 flags.DEFINE_float('train_rate', 0.9, '')
 
 #hyperparameter
-flags.DEFINE_integer('vocab_size', 9000, '')
-flags.DEFINE_integer('batch_size', 50, '')
-flags.DEFINE_integer('class_num',6, '')
+flags.DEFINE_integer('vocab_size', 50000, '')
+flags.DEFINE_integer('batch_size', 100, '')
+flags.DEFINE_integer('class_num',4, '')
 
 
 PAD_IDX = 1
