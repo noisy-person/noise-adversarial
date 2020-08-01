@@ -23,7 +23,7 @@ def generate_noisematrix( n_class,noise_rate):
     noise_matrix = np.zeros([n_class, n_class], dtype='float')
 
     if n_class <= 2:
-        noise_matrix =  noise_rate*(np.ones(n_class, dtype='float') - np.eye(n_class, dtype='float'))
+        noise_matrix =  (np.ones(n_class, dtype='float') - np.eye(n_class, dtype='float'))
     else:
         # Defines random noise over unit simplex
         

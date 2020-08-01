@@ -62,7 +62,15 @@ def train(train_iter, dev_iter, model, FLAGS):
     best_acc = 0
     last_step = 0
     model.train()
+    patience=0
     for epoch in range(1, FLAGS.epochs+1):
+        if patience>=FLAGS.patience and saved==0:
+            break
+        if epoch!=1 and saved==0:
+            patience+=1 
+        saved=0
+
+
         for batch in train_iter:
             feature, target = batch.text.to(device), batch.label.to(device)
             #feature.t_(), target.sub_(1)
@@ -124,14 +132,8 @@ def train(train_iter, dev_iter, model, FLAGS):
                     if FLAGS.save_best:
                         print(f"best accuracy : {best_acc}")
                         save(model, FLAGS, 'best', steps)
-                else:
-                    if steps - last_step >= FLAGS.early_stop:
-                        
-                        print('early stop by {} steps.'.format(FLAGS.early_stop))
-                        break
-            elif steps % FLAGS.save_interval == 0:
-                save(model, FLAGS, 'snapshot', steps)
-
+                        saved=1
+                        patience=0
 
 def eval(data_iter, model, steps,FLAGS):
     criterion = torch.nn.CrossEntropyLoss().to(device)
