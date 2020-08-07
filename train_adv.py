@@ -58,7 +58,8 @@ def train(train_iter, dev_iter, model, FLAGS):
     model.to(device)
 
     #patience =0
-    optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.lr)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.lr)
+    optimizer = torch.optim.Adadelta(model.parameters(), lr=FLAGS.lr)
     decayRate = 0.9
     my_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=decayRate)
 

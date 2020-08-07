@@ -25,12 +25,7 @@ FLAGS = flags.FLAGS
 #TREC vocab 8982 / class 6 / batch 50 /patience 12 / lr0005/ eps 2.5 
 #SST vocab 19538 / class 2 / 3,4,5 / feature size 100 /batch 100
 # dataset hyperparameter
-"""
-flags.DEFINE_string('dataset', 'AG_NEWS', '')
-flags.DEFINE_string('data_path', './data/AG_NEWS', '')
-flags.DEFINE_string('emb_path', './data/AG_NEWS/AG_NEWS_emb.pkl', '')
-flags.DEFINE_integer('embed_num', 50002, '')
-flags.DEFINE_integer('class_num', 4, '')
+
 
 flags.DEFINE_string('dataset', 'TREC', '')
 flags.DEFINE_string('data_path', './data/TREC', '')
@@ -44,8 +39,16 @@ flags.DEFINE_string('emb_path', './data/DBpedia/DBpedia_emb.pkl', '')
 flags.DEFINE_integer('embed_num', 50002, '')
 flags.DEFINE_integer('class_num', 14, '')
 
+
+flags.DEFINE_string('dataset', 'AG_NEWS', '')
+flags.DEFINE_string('data_path', './data/AG_NEWS', '')
+flags.DEFINE_string('emb_path', './data/AG_NEWS/AG_NEWS_emb.pkl', '')
+flags.DEFINE_integer('embed_num', 50002, '')
+flags.DEFINE_integer('class_num', 4, '')
+
+"""
 # learning
-flags.DEFINE_float('lr',  default=0.0005, help='initial learning rate [default: 0.001]')
+flags.DEFINE_float('lr',  default=1.0, help='initial learning rate [default: 0.001]')
 flags.DEFINE_integer('epochs',  default=100, help='number of epochs for train [default: 256]')
 flags.DEFINE_integer('batch_size',  default=512, help='batch size for training [default: 64]')
 flags.DEFINE_integer('log_interval',   default=1,   help='how many steps to wait before logging training status [default: 1]')
@@ -58,23 +61,23 @@ flags.DEFINE_integer('ngram',  default=2, help='include ngram vocab')
 
 
 # model
-flags.DEFINE_string('mode',  default='transition', help='choose one of [transition,clean,adv] dont forget to import different train code ')
-flags.DEFINE_string('noise_mode',  default='asym', help='asym or sym')
+flags.DEFINE_string('mode',  default='adv', help='choose one of [transition,clean,adv] dont forget to import different train code ')
+flags.DEFINE_string('noise_mode',  default='sym', help='asym or sym')
 flags.DEFINE_float('dropout',  default=0.5, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_float('max_norm',  default=3.0, help='l2 constraint of parameters [default: 3.0]')
 flags.DEFINE_integer('embed_dim',  default=300, help='number of embedding dimension [default: 128]')
-flags.DEFINE_integer('kernel_num',  default=400, help='number of each kind of kernel')
-flags.DEFINE_string('kernel_sizes',  default='1,2,3,4,5,7', help='comma-separated kernel size to use for convolution')
+flags.DEFINE_integer('kernel_num',  default=100, help='number of each kind of kernel')
+flags.DEFINE_string('kernel_sizes',  default='3', help='comma-separated kernel size to use for convolution')
 flags.DEFINE_bool('static',  default=False, help='fix the embedding')
 
 # optionasd
-flags.DEFINE_string('snapshot',  default=None, help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
+flags.DEFINE_string('snapshot',  default='snapshot/2020-08-07_15-59-25/best_TREC_adv_asym_0.7_1.0_6.5_steps_2000.pt', help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
 #flags.DEFINE_string('snapshot',  default='snapshot/2020-07-26_10-32-47/best_steps_3900.pt', help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
 flags.DEFINE_string('predict',  default=None, help='predict the sentence given')
 flags.DEFINE_bool('test',  default=True, help='train or test')
-flags.DEFINE_integer('patience',  default=3, help='the probability for dropout [default: 0.5]')
-flags.DEFINE_float('noise_rate',  default=0.9, help='the probability for dropout [default: 0.5]')
-flags.DEFINE_float('epsilon',  default=2.5, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_integer('patience',  default=25, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_float('noise_rate',  default=0.7, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_float('epsilon',  default=10.0, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_bool('fake',  default=True, help='fake dataset')
 flags.DEFINE_bool('multi_gpu',  default=False, help='use multi gpus')
 

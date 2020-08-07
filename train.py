@@ -53,7 +53,12 @@ def train(train_iter, dev_iter, model, FLAGS):
         model = nn.DataParallel(model)
     model.to(device)
     lambda_=0.01
-    optimizer = torch.optim.Adam(model.parameters(), lr=FLAGS.lr)
+    opt_nm = [
+        {'params': model.embed.parameters(), 'weight_decay': 0},
+        {'params': model.convs.parameters(), 'weight_decay': 0},
+        {'params': model.fc1.parameters(), 'weight_decay': 0},
+        {'params': model.nm.transition_mat, 'weight_decay': 0.01}]
+    optimizer = torch.optim.Adadelta(model.parameters(), lr=FLAGS.lr)
     decayRate = 0.9
     my_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=decayRate)
 
@@ -87,7 +92,7 @@ def train(train_iter, dev_iter, model, FLAGS):
             #print('logit vector', logit.size())
             #print('target vector', target.size())
             
-            loss = criterion(noise_logit, target)+0.5*lambda_*l2_norm #fix with one l2_norm
+            loss = criterion(noise_logit, target)
     
             #print(loss)
             #
