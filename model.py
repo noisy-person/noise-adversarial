@@ -32,7 +32,7 @@ class NoiseModel(nn.Module):
         return:
             noise distribution
         """
-        out = torch.matmul(x, self.transition_mat.T)
+        out = torch.matmul(x, self.transition_mat)
 
         return out
 

@@ -77,7 +77,7 @@ flags.DEFINE_string('predict',  default=None, help='predict the sentence given')
 flags.DEFINE_bool('test',  default=True, help='train or test')
 flags.DEFINE_integer('patience',  default=25, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_float('noise_rate',  default=0.7, help='the probability for dropout [default: 0.5]')
-flags.DEFINE_float('epsilon',  default=5.0, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_float('epsilon',  default=7.0, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_bool('fake',  default=True, help='fake dataset')
 flags.DEFINE_bool('multi_gpu',  default=False, help='use multi gpus')
 

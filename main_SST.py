@@ -52,7 +52,7 @@ flags.DEFINE_integer('class_num', 2, '')
 
 
 # learning
-flags.DEFINE_float('lr',  default=0.0005, help='initial learning rate [default: 0.001]')
+flags.DEFINE_float('lr',  default=0.1, help='initial learning rate [default: 0.001]')
 flags.DEFINE_integer('epochs',  default=100, help='number of epochs for train [default: 256]')
 flags.DEFINE_integer('batch_size',  default=100, help='batch size for training [default: 64]')
 flags.DEFINE_integer('log_interval',   default=1,   help='how many steps to wait before logging training status [default: 1]')
@@ -79,9 +79,9 @@ flags.DEFINE_string('snapshot',  default=None, help='filename of model snapshot 
 #flags.DEFINE_string('snapshot',  default='snapshot/2020-07-26_10-32-47/best_steps_3900.pt', help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
 flags.DEFINE_string('predict',  default=None, help='predict the sentence given')
 flags.DEFINE_bool('test',  default=True, help='train or test')
-flags.DEFINE_integer('patience',  default=20, help='the probability for dropout [default: 0.5]')
-flags.DEFINE_float('noise_rate',  default=0.5, help='the probability for dropout [default: 0.5]')
-flags.DEFINE_float('epsilon',  default=2.5, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_integer('patience',  default=15, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_float('noise_rate',  default=0.0, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_float('epsilon',  default=0.0, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_bool('fake',  default=True, help='fake dataset')
 flags.DEFINE_bool('multi_gpu',  default=False, help='use multi gpus')
 

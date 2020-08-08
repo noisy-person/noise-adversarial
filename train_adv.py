@@ -103,7 +103,7 @@ def train(train_iter, dev_iter, model, FLAGS):
             #v_loss = vat_loss(model, embedd_matrix, logit,input_length, eps=epsilon)
             v_loss = vat_loss_ours(model, model.context_vec, logit,input_length, eps=epsilon)
             ce_loss = criterion(logit, target) 
-            loss = ce_loss + v_loss
+            loss = ce_loss# + v_loss
 
             #print(loss)
             optimizer.zero_grad()
