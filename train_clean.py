@@ -63,8 +63,9 @@ def train(train_iter, dev_iter, model, FLAGS):
     step_arr=[]
     for epoch in range(1, FLAGS.epochs+1):
         for batch in train_iter:
-            feature, target = batch.text.to(device), batch.label.to(device)
-            #feature.t_(), target.sub_(1)
+            feature, target,input_length = torch.from_numpy(batch['word']).to(device), \
+                                           torch.from_numpy(batch['y']).to(device), \
+                                            torch.from_numpy(batch['word_lengths']).to(device) 
 
             
             optimizer.zero_grad()
@@ -138,8 +139,9 @@ def eval(data_iter, model, steps,FLAGS):
     mean_diff_3=0
 
     for batch in data_iter:
-        feature, target = batch.text.to(device), batch.label.to(device)
-
+        feature, target,input_length = torch.from_numpy(batch['word']).to(device), \
+                                        torch.from_numpy(batch['y']).to(device), \
+                                        torch.from_numpy(batch['word_lengths']).to(device) 
         logit = model(feature)
         loss = criterion(logit, target)
 
@@ -151,7 +153,7 @@ def eval(data_iter, model, steps,FLAGS):
         corrects += (torch.max(logit, 1)
                      [1].view(target.size()).data == target.data).sum()
 
-    size = len(data_iter.dataset)
+    size = len(data_iter)*FLAGS.batch_size
     avg_loss /= size
     accuracy = 100.0 * corrects/size
     writer.add_scalar('Accuracy/eval',accuracy,steps)
@@ -174,7 +176,9 @@ def test(data_iter, model, FLAGS):
     
     for batch in data_iter:
         
-        feature, target = batch.text.to(device), batch.label.to(device)
+        feature, target,input_length = torch.from_numpy(batch['word']).to(device), \
+                                        torch.from_numpy(batch['y']).to(device), \
+                                        torch.from_numpy(batch['word_lengths']).to(device)  
         #feature.t_(), target.sub_(1)
         clean_logit = model(feature)
         loss = criterion(clean_logit, target)
@@ -185,7 +189,7 @@ def test(data_iter, model, FLAGS):
         corrects += (torch.max(clean_logit, 1)
                      [1].view(target.size()).data == target.data).sum()
 
-    size = len(data_iter.dataset)
+    size = len(data_iter)*FLAGS.batch_size
     avg_loss /= size
     mean_diff 
     accuracy = 100.0 * corrects/size

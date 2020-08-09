@@ -77,7 +77,11 @@ def train(train_iter, dev_iter, model, FLAGS):
 
 
         for batch in train_iter:
-            feature, target = batch.text.to(device), batch.label.to(device)
+            #feature, target = batch.text.to(device), batch.label.to(device)
+            #feature.t_(), target.sub_(1)
+            feature, target,input_length = torch.from_numpy(batch['word']).to(device), \
+                                           torch.from_numpy(batch['y']).to(device), \
+                                            torch.from_numpy(batch['word_lengths']).to(device) 
             #feature.t_(), target.sub_(1)
             if FLAGS.multi_gpu :
                 #l2_norm=torch.norm(model.module.nm.transition_mat,p=2)
@@ -150,9 +154,11 @@ def eval(data_iter, model, steps,FLAGS):
     mean_diff_3=0
 
     for batch in data_iter:
-        feature, target = batch.text.to(device), batch.label.to(device)
+        feature, target,input_length = torch.from_numpy(batch['word']).to(device), \
+                                        torch.from_numpy(batch['y']).to(device), \
+                                        torch.from_numpy(batch['word_lengths']).to(device) 
         #feature.t_(), target.sub_(1)
-    
+
         noise_logit,clean_logit = model(feature)
         loss = criterion(clean_logit, target)
 
@@ -164,7 +170,7 @@ def eval(data_iter, model, steps,FLAGS):
         corrects += (torch.max(clean_logit, 1)
                      [1].view(target.size()).data == target.data).sum()
 
-    size = len(data_iter.dataset)
+    size = len(data_iter)*FLAGS.batch_size
     avg_loss /= size
     accuracy = 100.0 * corrects/size
     writer.add_scalar('Accuracy/eval',accuracy,steps)
@@ -184,8 +190,10 @@ def test(data_iter, model, FLAGS):
     corrects, avg_loss = 0, 0
     print(len(data_iter))
     for batch in data_iter:
-        feature, target = batch.text.to(device), batch.label.to(device)
-        #feature.t_(), target.sub_(1)
+        feature, target,input_length = torch.from_numpy(batch['word']).to(device), \
+                                        torch.from_numpy(batch['y']).to(device), \
+                                        torch.from_numpy(batch['word_lengths']).to(device) 
+
         noise_logit,clean_logit = model(feature)
         loss = criterion(clean_logit, target)
 
@@ -193,7 +201,7 @@ def test(data_iter, model, FLAGS):
         corrects += (torch.max(clean_logit, 1)
                      [1].view(target.size()).data == target.data).sum()
 
-    size = len(data_iter.dataset)
+    size = len(data_iter)*FLAGS.batch_size
     avg_loss /= size
     accuracy = 100.0 * corrects/size
     print('\Test - loss: {:.6f}  acc: {:.4f}%({}/{}) \n'.format(avg_loss, 

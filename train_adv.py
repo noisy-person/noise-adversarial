@@ -85,11 +85,13 @@ def train(train_iter, dev_iter, model, FLAGS):
             
         for batch in train_iter:
             model.train()
-            
-            feature, target, input_length = batch.text.to(device), batch.label.to(device)  , batch.input_length.to(device) 
+            #feature, target, input_length = batch.text.to(device), batch.label.to(device)  , batch.input_length.to(device) 
+            feature, target,input_length = torch.from_numpy(batch['word']).to(device), \
+                                           torch.from_numpy(batch['y']).to(device), \
+                                            torch.from_numpy(batch['word_lengths']).to(device) 
             #feature.t_(), target.sub_(1)
 
-            
+                
             embedd_matrix = _idx2emb(feature)
 
 
@@ -103,7 +105,7 @@ def train(train_iter, dev_iter, model, FLAGS):
             #v_loss = vat_loss(model, embedd_matrix, logit,input_length, eps=epsilon)
             v_loss = vat_loss_ours(model, model.context_vec, logit,input_length, eps=epsilon)
             ce_loss = criterion(logit, target) 
-            loss = ce_loss# + v_loss
+            loss = ce_loss + v_loss
 
             #print(loss)
             optimizer.zero_grad()
@@ -157,9 +159,14 @@ def eval(data_iter, model, steps,FLAGS):
     mean_diff=0
     mean_diff_2=0
     mean_diff_3=0
-
+    cnt=0
     for batch in data_iter:
-        feature, target = batch.text.to(device), batch.label.to(device)
+        #feature, target, input_length = batch.text.to(device), batch.label.to(device)  , batch.input_length.to(device) 
+        feature, target,input_length = torch.from_numpy(batch['word']).to(device), \
+                                        torch.from_numpy(batch['y']).to(device), \
+                                        torch.from_numpy(batch['word_lengths']).to(device) 
+        #feature.t_(), target.sub_(1)
+    
         #feature.t_(), target.sub_(1)
         embedd_matrix = _idx2emb(feature)
         logit = model(embedd_matrix)
@@ -172,8 +179,9 @@ def eval(data_iter, model, steps,FLAGS):
         avg_loss += loss.item()
         corrects += (torch.max(logit, 1)
                      [1].view(target.size()).data == target.data).sum()
+        cnt+=1
 
-    size = len(data_iter.dataset)
+    size = cnt*FLAGS.batch_size
     avg_loss /= size
     accuracy = 100.0 * corrects/size
     writer.add_scalar('Accuracy/eval',accuracy,steps)
@@ -192,10 +200,17 @@ def test(data_iter, model, FLAGS):
     model.eval()
     corrects, avg_loss = 0, 0
     _idx2emb = idx2emb(FLAGS).to(device)
-
+    cnt=0
     for batch in data_iter:
-        feature, target = batch.text.to(device), batch.label.to(device)
+        #feature, target, input_length = batch.text.to(device), batch.label.to(device)  , batch.input_length.to(device) 
+        feature, target,input_length = torch.from_numpy(batch['word']).to(device), \
+                                        torch.from_numpy(batch['y']).to(device), \
+                                        torch.from_numpy(batch['word_lengths']).to(device) 
+
         #feature.t_(), target.sub_(1)
+
+        #feature.t_(), target.sub_(1)
+
         embedd_matrix = _idx2emb(feature)
         logit = model(embedd_matrix)
         loss = criterion(logit, target)
@@ -203,8 +218,9 @@ def test(data_iter, model, FLAGS):
         avg_loss += loss.item()
         corrects += (torch.max(logit, 1)
                      [1].view(target.size()).data == target.data).sum()
+        cnt+=1
 
-    size = len(data_iter.dataset)
+    size = cnt*FLAGS.batch_size
     avg_loss /= size
     accuracy = 100.0 * corrects/size
     print('\nTest - loss: {:.6f}  acc: {:.4f}%({}/{}) \n'.format(avg_loss, 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-files=( $( find snapshot -type f -newermt '8/7/2020  18:02:00'  ) )
+files=( $( find snapshot -type f -newermt '8/9/2020  15:28:00'  ) )
 
 prev='asdf'
 for filename in ${files[@]} ; do
