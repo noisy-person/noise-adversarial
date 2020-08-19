@@ -67,7 +67,7 @@ flags.DEFINE_integer('ngram',  default=2, help='include ngram vocab')
 
 
 # model
-flags.DEFINE_string('mode',  default='adv', help='choose one of [transition,clean,adv] dont forget to import different train code ')
+flags.DEFINE_string('mode',  default='transition', help='choose one of [transition,clean,adv] dont forget to import different train code ')
 flags.DEFINE_string('noise_mode',  default='uni', help='uni or rand')
 flags.DEFINE_float('dropout',  default=0.5, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_float('max_norm',  default=3.0, help='l2 constraint of parameters [default: 3.0]')
@@ -77,7 +77,7 @@ flags.DEFINE_string('kernel_sizes',  default='3,4,5', help='comma-separated kern
 flags.DEFINE_bool('static',  default=False, help='fix the embedding')
 
 # optionasd
-flags.DEFINE_string('snapshot',  default='snapshot/2020-08-09_16-35-37/best_SST2_adv_uni_0.47_1.0_1.2_steps_800.pt', help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
+flags.DEFINE_string('snapshot',  default='snapshot/2020-08-12_07-33-47/best_SST2_adv_uni_0.2_1.0_0.5_steps_900.pt', help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
 #flags.DEFINE_string('snapshot',  default='snapshot/2020-07-26_10-32-47/best_steps_3900.pt', help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
 flags.DEFINE_string('predict',  default=None, help='predict the sentence given')
 flags.DEFINE_bool('test',  default=True, help='train or test')

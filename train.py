@@ -52,15 +52,19 @@ def train(train_iter, dev_iter, model, FLAGS):
     if FLAGS.multi_gpu :
         model = nn.DataParallel(model)
     model.to(device)
-    lambda_=0.01
+    if FLAGS.dataset=='DBpedia':
+        lambda_=0.01
+    else:
+        lambda_=0.01
     opt_nm = [
         {'params': model.embed.parameters(), 'weight_decay': 0},
         {'params': model.convs.parameters(), 'weight_decay': 0},
         {'params': model.fc1.parameters(), 'weight_decay': 0},
-        {'params': model.nm.transition_mat, 'weight_decay': 0.01}]
-    optimizer = torch.optim.Adadelta(model.parameters(), lr=FLAGS.lr)
-    decayRate = 0.9
-    my_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=decayRate)
+        {'params': model.nm.transition_mat, 'weight_decay': lambda_}]
+    if FLAGS.dataset=='DBpedia':
+        optimizer = torch.optim.SGD(model.parameters(), lr=FLAGS.lr)
+    else:
+        optimizer = torch.optim.Adadelta(model.parameters(), lr=FLAGS.lr)
 
     criterion = torch.nn.CrossEntropyLoss().to(device)
     steps = 0
@@ -140,7 +144,10 @@ def train(train_iter, dev_iter, model, FLAGS):
                     last_step = steps
                     if FLAGS.save_best:
                         print(f"best accuracy : {best_acc}")
-                        save(model, FLAGS, 'best', steps)
+                        if FLAGS.dataset=='DBpedia':
+                            save(model, FLAGS, 'best'+'_'+FLAGS.dataset+'_'+FLAGS.mode+'_'+FLAGS.noise_mode+'_'+str(FLAGS.noise_rate), steps)
+                        else:
+                            save(model, FLAGS, 'best'+'_'+FLAGS.dataset+'_'+FLAGS.mode+'_'+FLAGS.noise_mode+'_'+str(FLAGS.noise_rate), steps)
                         saved=1
                         patience=0
 

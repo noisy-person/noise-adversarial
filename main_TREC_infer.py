@@ -14,7 +14,7 @@ from utils import get_length
 from torch.nn.utils.rnn import pad_sequence
 import collections
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.cuda.set_device(3)
+torch.cuda.set_device(0)
 
 PAD_IDX = 1
 
@@ -73,13 +73,13 @@ flags.DEFINE_bool('static',  default=False, help='fix the embedding')
 
 
 # optionasd
-flags.DEFINE_string('snapshot',  default='snapshot/2020-08-09_10-32-47/best_TREC_adv_uni_0.5_1.0_2.0_steps_3200.pt', help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
+flags.DEFINE_string('snapshot',  default='snapshot/2020-08-11_10-53-01/best_TREC_adv_uni_0.0_1.0_0.0_steps_1000.pt', help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
 #flags.DEFINE_string('snapshot',  default='snapshot/2020-07-26_10-32-47/best_steps_3900.pt', help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
 flags.DEFINE_string('predict',  default=None, help='predict the sentence given')
 flags.DEFINE_bool('test',  default=True, help='train or test')
 flags.DEFINE_integer('patience',  default=10, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_float('noise_rate',  default=0.7, help='the probability for dropout [default: 0.5]')
-flags.DEFINE_float('epsilon',  default=3.0, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_float('epsilon',  default=0.0, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_bool('fake',  default=True, help='fake dataset')
 flags.DEFINE_bool('multi_gpu',  default=False, help='use multi gpus')
 

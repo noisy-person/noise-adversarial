@@ -14,7 +14,7 @@ from utils import get_length
 from torch.nn.utils.rnn import pad_sequence
 import collections
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.cuda.set_device(3)
+
 
 PAD_IDX = 1
 
@@ -46,7 +46,7 @@ flags.DEFINE_integer('class_num', 14, '')
 """
 # learning
 flags.DEFINE_float('lr',  default=1.0, help='initial learning rate [default: 0.001]')
-flags.DEFINE_integer('epochs',  default=20, help='number of epochs for train [default: 256]')
+flags.DEFINE_integer('epochs',  default=12, help='number of epochs for train [default: 256]')
 flags.DEFINE_integer('batch_size',  default=100, help='batch size for training [default: 64]')
 flags.DEFINE_integer('log_interval',   default=1,   help='how many steps to wait before logging training status [default: 1]')
 flags.DEFINE_integer('test_interval',  default=100, help='how many steps to wait before testing [default: 100]')
@@ -59,7 +59,7 @@ flags.DEFINE_integer('ngram',  default=2, help='include ngram vocab')
 
 # model
 flags.DEFINE_string('mode',  default='adv', help='choose one of [transition,clean,adv] dont forget to import different train code ')
-flags.DEFINE_string('noise_mode',  default='rand', help='asym or sym')
+flags.DEFINE_string('noise_mode',  default='uni', help='asym or sym')
 flags.DEFINE_float('dropout',  default=0.5, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_float('max_norm',  default=3.0, help='l2 constraint of parameters [default: 3.0]')
 flags.DEFINE_integer('embed_dim',  default=300, help='number of embedding dimension [default: 128]')
@@ -72,12 +72,13 @@ flags.DEFINE_string('snapshot',  default=None, help='filename of model snapshot 
 #flags.DEFINE_string('snapshot',  default='snapshot/2020-07-26_10-32-47/best_steps_3900.pt', help='filename of model snapshot [default: None] ex)snapshot/2020-07-07_09-14-42/best_steps_22100.pt')
 flags.DEFINE_string('predict',  default=None, help='predict the sentence given')
 flags.DEFINE_bool('test',  default=True, help='train or test')
-flags.DEFINE_integer('patience',  default=2, help='the probability for dropout [default: 0.5]')
-flags.DEFINE_float('noise_rate',  default=0.5, help='the probability for dropout [default: 0.5]')
-flags.DEFINE_float('epsilon',  default=0.5, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_integer('patience',  default=3, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_float('noise_rate',  default=0.7, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_float('epsilon',  default=0.8, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_bool('fake',  default=True, help='fake dataset')
 flags.DEFINE_bool('multi_gpu',  default=False, help='use multi gpus')
 
+flags.DEFINE_integer('GPU',  default=1, help='how many steps to wait before testing [default: 100]')
 
 
 def generate_batch(data):
@@ -106,6 +107,7 @@ def generate_batch(data):
 
 
 def main(argv):
+    torch.cuda.set_device(FLAGS.GPU)
     logging.info('Running under Python {0[0]}.{0[1]}.{0[2]}'.format(sys.version_info))
     
     if FLAGS.mode =='transition':

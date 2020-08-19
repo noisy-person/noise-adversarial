@@ -14,7 +14,6 @@ from utils import get_length
 from torch.nn.utils.rnn import pad_sequence
 import collections
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.cuda.set_device(3)
 
 PAD_IDX = 1
 
@@ -82,13 +81,17 @@ flags.DEFINE_string('snapshot',  default=None, help='filename of model snapshot 
 flags.DEFINE_string('predict',  default=None, help='predict the sentence given')
 flags.DEFINE_bool('test',  default=True, help='train or test')
 flags.DEFINE_integer('patience',  default=3, help='the probability for dropout [default: 0.5]')
-flags.DEFINE_float('noise_rate',  default=0.47, help='the probability for dropout [default: 0.5]')
-flags.DEFINE_float('epsilon',  default=1.2, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_float('noise_rate',  default=0.2, help='the probability for dropout [default: 0.5]')
+flags.DEFINE_float('epsilon',  default=0.5, help='the probability for dropout [default: 0.5]')
 flags.DEFINE_bool('fake',  default=True, help='fake dataset')
 flags.DEFINE_bool('multi_gpu',  default=False, help='use multi gpus')
 
+flags.DEFINE_integer('GPU',  default=1, help='how many steps to wait before testing [default: 100]')
+
 
 def main(argv):
+    torch.cuda.set_device(FLAGS.GPU)
+
     logging.info('Running under Python {0[0]}.{0[1]}.{0[2]}'.format(sys.version_info))
     
     if FLAGS.mode =='transition':

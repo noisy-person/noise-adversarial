@@ -144,7 +144,8 @@ def train(train_iter, dev_iter, model, FLAGS):
                     last_step = steps
                     if FLAGS.save_best:
                         print(f"best accuracy : {best_acc}")
-                        save(model, FLAGS, 'best'+'_'+FLAGS.dataset+'_'+FLAGS.mode+'_'+FLAGS.noise_mode+'_'+str(FLAGS.noise_rate)+'_'+str(FLAGS.lr)+'_'+str(FLAGS.epsilon), steps)
+                        if steps>3000:
+                            save(model, FLAGS, 'best'+'_'+FLAGS.dataset+'_'+FLAGS.mode+'_'+FLAGS.noise_mode+'_'+str(FLAGS.noise_rate)+'_'+str(FLAGS.lr)+'_'+str(FLAGS.epsilon), steps)
                         saved=1
                         patience=0
 
